@@ -21,6 +21,14 @@ interface ChatDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(chats: List<ChatEntity>)
 
+    /**
+     * Insert-if-absent for the ingestor: [upsert] is REPLACE and would clobber a known chat's
+     * denormalized `lastMessageDate`/`lastMessagePreview`, so a message that merely *references* a
+     * chat must use this IGNORE variant to seed a minimal row only when the chat doesn't exist yet.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnore(chats: List<ChatEntity>)
+
     @Query("SELECT * FROM chats WHERE guid = :guid")
     suspend fun getByGuid(guid: String): ChatEntity?
 
