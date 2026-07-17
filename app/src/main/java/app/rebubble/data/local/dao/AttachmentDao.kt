@@ -14,6 +14,10 @@ interface AttachmentDao {
     @Query("SELECT * FROM attachments WHERE guid = :guid")
     suspend fun getByGuid(guid: String): AttachmentEntity?
 
+    /** Lookup by absolute local path — used when LRU eviction clears a cached file. */
+    @Query("SELECT * FROM attachments WHERE localPath = :localPath LIMIT 1")
+    suspend fun getByLocalPath(localPath: String): AttachmentEntity?
+
     /**
      * IGNORE on conflict: a server-sourced re-insert of an already-known attachment must never
      * clobber a locally-set `localPath`/`downloadState`. Callers that *do* want to update those

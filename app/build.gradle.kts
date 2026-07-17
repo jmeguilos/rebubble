@@ -85,6 +85,8 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
+    implementation(libs.coil.compose)
+
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)

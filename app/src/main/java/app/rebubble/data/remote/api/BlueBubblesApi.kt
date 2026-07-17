@@ -12,6 +12,8 @@ import app.rebubble.data.remote.dto.requests.SendTextRequest
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Multipart
@@ -20,6 +22,7 @@ import retrofit2.http.Part
 import retrofit2.http.PartMap
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 /**
  * BlueBubbles server REST API surface used by the app.
@@ -69,4 +72,16 @@ interface BlueBubblesApi {
 
     @GET("contact")
     suspend fun contacts(): Envelope<List<ContactDto>>
+
+    /**
+     * Streams attachment bytes. Callers must consume [ResponseBody] without buffering the whole
+     * payload (use [Streaming] + [ResponseBody.byteStream]). Auth/`guid` query comes from
+     * [GuidAuthInterceptor].
+     */
+    @Streaming
+    @GET("attachment/{guid}/download")
+    suspend fun downloadAttachment(
+        @Path("guid") guid: String,
+        @Query("original") original: Boolean = true,
+    ): Response<ResponseBody>
 }
