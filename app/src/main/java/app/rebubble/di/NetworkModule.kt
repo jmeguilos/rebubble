@@ -30,21 +30,6 @@ object NetworkModule {
     @Singleton
     fun provideJson(): Json = Json { ignoreUnknownKeys = true }
 
-    /**
-     * Placeholder credentials provider. `ServerConfigRepository` (a later task) will supersede
-     * this binding with one backed by the user's real, persisted server configuration; until
-     * then this keeps the Hilt graph compiling with "no server configured yet" semantics (both
-     * [GuidAuthInterceptor] and [DynamicBaseUrlInterceptor] already handle null gracefully / by
-     * surfacing an error, since there is genuinely nothing configured yet in that state).
-     */
-    @Provides
-    @Singleton
-    fun provideServerCredentialsProvider(): ServerCredentialsProvider =
-        object : ServerCredentialsProvider {
-            override fun url(): String? = null
-            override fun password(): String? = null
-        }
-
     @Provides
     @Singleton
     fun provideGuidAuthInterceptor(credentials: ServerCredentialsProvider): GuidAuthInterceptor =

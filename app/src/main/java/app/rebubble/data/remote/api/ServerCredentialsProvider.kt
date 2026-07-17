@@ -9,8 +9,12 @@ package app.rebubble.data.remote.api
  * [GuidAuthInterceptor] and [DynamicBaseUrlInterceptor] read the current value on every request
  * rather than baking it into the DI graph at construction time.
  *
- * The real implementation is `ServerConfigRepository` (a later task); until then,
- * `app.rebubble.di.NetworkModule` binds a placeholder that returns null for both.
+ * The real implementation is `app.rebubble.data.repo.ServerConfigRepository`, bound in
+ * `app.rebubble.di.RepositoryModule` (superseding T3's null/null placeholder that used to live in
+ * `app.rebubble.di.NetworkModule`). Both methods are synchronous reads of an in-memory snapshot
+ * that repository keeps current from its persisted config — see its KDoc for the resulting
+ * cold-start caveat (both methods return null until that snapshot's first update, even if a
+ * server is already configured on disk).
  */
 interface ServerCredentialsProvider {
     /** The user-configured server base URL (e.g. `http://192.168.1.20:1234`), or null if unset. */
