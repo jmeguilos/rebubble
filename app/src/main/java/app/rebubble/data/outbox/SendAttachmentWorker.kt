@@ -58,6 +58,8 @@ class SendAttachmentWorker @AssistedInject constructor(
         val existing = messageDao.getByGuid(tempGuid)
         if (existing == null || existing.sendStatus == SendStatus.SENT) {
             // Socket echo already won the race (row swapped away or settled to SENT).
+            // Also recover cleanup if we died after ingest but before temp-att delete.
+            cleanupTempAttachment(tempGuid)
             return Result.success()
         }
 
@@ -129,11 +131,16 @@ class SendAttachmentWorker @AssistedInject constructor(
      * attachment guid was inserted alongside. Transfer local download state onto the real row
      * (so the UI keeps the already-copied bytes) and delete the temp-att row to avoid
      * double-render. If the ack carried no attachments, leave the reparented temp-att alone.
+     *
+     * Idempotent: no-op when the temp-att row is already gone (safe on early-exit recovery).
+     * When [realMessageGuid] is null (temp message already swapped away), resolves the target
+     * from the temp-att's current `messageGuid` (post-reparent).
      */
-    private suspend fun cleanupTempAttachment(tempGuid: String, realMessageGuid: String) {
+    private suspend fun cleanupTempAttachment(tempGuid: String, realMessageGuid: String? = null) {
         val tempAttGuid = OutboxRepository.tempAttachmentGuid(tempGuid)
         val tempAtt = attachmentDao.getByGuid(tempAttGuid) ?: return
-        val siblings = attachmentDao.getForMessage(realMessageGuid)
+        val targetMessageGuid = realMessageGuid ?: tempAtt.messageGuid
+        val siblings = attachmentDao.getForMessage(targetMessageGuid)
             .filter { it.guid != tempAttGuid }
         if (siblings.isEmpty()) return
 

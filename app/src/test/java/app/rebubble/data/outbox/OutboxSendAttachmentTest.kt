@@ -19,11 +19,15 @@ import app.rebubble.data.local.entity.SendStatus
 import app.rebubble.data.remote.api.BlueBubblesApi
 import app.rebubble.data.remote.api.FakeServerCredentialsProvider
 import app.rebubble.data.remote.api.testBlueBubblesApi
+import app.rebubble.data.remote.dto.Envelope
+import app.rebubble.data.remote.dto.MessageDto
 import app.rebubble.data.repo.InMemorySecretStore
 import app.rebubble.data.repo.ServerConfigRepository
+import app.rebubble.data.sync.IngestSource
 import app.rebubble.data.sync.MessageIngestor
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
@@ -66,6 +70,8 @@ class OutboxSendAttachmentTest {
     private lateinit var api: BlueBubblesApi
     private lateinit var serverConfig: ServerConfigRepository
     private lateinit var outbox: OutboxRepository
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     @Before
     fun setUp() {
@@ -367,7 +373,44 @@ class OutboxSendAttachmentTest {
         assertEquals(0, server.requestCount)
     }
 
-    // --- 5. retry() re-enqueues SendAttachmentWorker --------------------------------------------
+    // --- 5. crash-window: early-exit recovers orphaned temp-att ---------------------------------
+
+    @Test
+    fun `worker early-exit after ingest-without-cleanup removes orphaned temp-att`() = runBlocking {
+        seedChat()
+        val source = sourceFile()
+        val tempGuid = outbox.sendAttachment(
+            CHAT_GUID,
+            Uri.fromFile(source),
+            displayName = FILE_NAME,
+            mimeType = MIME_TYPE,
+        )
+        val tempAttGuid = OutboxRepository.tempAttachmentGuid(tempGuid)
+        val localPath = db.attachmentDao().getByGuid(tempAttGuid)!!.localPath!!
+
+        // Simulate process death between ingest and cleanup: swap + real att insert only.
+        val dto = requireNotNull(
+            json.decodeFromString<Envelope<MessageDto>>(sentEnvelope(tempGuid)).data,
+        )
+        ingestor.ingest(listOf(dto), IngestSource.SEND_ACK, fallbackChatGuid = CHAT_GUID)
+
+        assertNull(db.messageDao().getByGuid(tempGuid))
+        assertNotNull(db.attachmentDao().getByGuid(tempAttGuid))
+        assertEquals(2, db.attachmentDao().getForMessage(REAL_GUID).size)
+
+        val result = buildWorker(tempGuid, filePath = localPath).doWork()
+
+        assertEquals(ListenableWorker.Result.success(), result)
+        assertNull(db.attachmentDao().getByGuid(tempAttGuid))
+        assertEquals(1, db.attachmentDao().getForMessage(REAL_GUID).size)
+        val realAtt = db.attachmentDao().getByGuid(REAL_ATT_GUID)
+        assertNotNull(realAtt)
+        assertEquals(localPath, realAtt!!.localPath)
+        assertEquals(DownloadState.DOWNLOADED, realAtt.downloadState)
+        assertEquals(0, server.requestCount)
+    }
+
+    // --- 6. retry() re-enqueues SendAttachmentWorker --------------------------------------------
 
     @Test
     fun `retry on FAILED attachment row re-enqueues SendAttachmentWorker`() = runBlocking {

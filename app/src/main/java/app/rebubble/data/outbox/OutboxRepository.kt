@@ -18,6 +18,8 @@ import app.rebubble.data.local.entity.DownloadState
 import app.rebubble.data.local.entity.MessageEntity
 import app.rebubble.data.local.entity.SendStatus
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.util.UUID
@@ -98,9 +100,13 @@ class OutboxRepository @Inject constructor(
         mimeType: String? = null,
     ): String {
         val tempGuid = newTempGuid()
-        val name = displayName ?: resolveDisplayName(uri) ?: "attachment"
-        val resolvedMime = mimeType ?: context.contentResolver.getType(uri)
-        val dest = copyUriToOutbox(uri, tempGuid, name)
+        // ContentResolver + byte copy can be large (videos); never run on the caller's dispatcher.
+        val (name, resolvedMime, dest) = withContext(Dispatchers.IO) {
+            val resolvedName = displayName ?: resolveDisplayName(uri) ?: "attachment"
+            val resolvedType = mimeType ?: context.contentResolver.getType(uri)
+            val copied = copyUriToOutbox(uri, tempGuid, resolvedName)
+            Triple(resolvedName, resolvedType, copied)
+        }
         val now = System.currentTimeMillis()
         val attGuid = tempAttachmentGuid(tempGuid)
 
