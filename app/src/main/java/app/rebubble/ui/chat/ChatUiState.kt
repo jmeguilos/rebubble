@@ -10,6 +10,9 @@ import app.rebubble.data.local.entity.SendStatus
 data class ChatUiState(
     val title: String = "",
     val isSms: Boolean = false,
+    /** Contact photo for 1:1 chats when known; null → monogram / person glyph. */
+    val avatarPath: String? = null,
+    val isGroup: Boolean = false,
     val items: List<ChatUiItem> = emptyList(),
     val endReached: Boolean = false,
     val loading: Boolean = true,

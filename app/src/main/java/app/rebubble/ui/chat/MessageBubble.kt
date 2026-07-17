@@ -75,6 +75,8 @@ fun MessageBubble(
     onDownloadAttachment: (String) -> Unit,
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
+    /** When true and this is the latest own message, show Delivered/Read under the bubble. */
+    showDeliveryReceipt: Boolean = false,
     animateSendPop: Boolean = item.message.guid.startsWith("temp-") && item.message.isFromMe,
 ) {
     val fromMe = item.message.isFromMe
@@ -190,6 +192,19 @@ fun MessageBubble(
                 )
             }
         }
+        val receiptLabel = deliveryReceiptLabel(
+            show = showDeliveryReceipt && fromMe && !item.isFailed && !item.isSending,
+            dateDelivered = item.message.dateDelivered,
+            dateRead = item.message.dateRead,
+        )
+        if (receiptLabel != null) {
+            Text(
+                text = receiptLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp, end = 4.dp),
+            )
+        }
         if (selected) {
             Text(
                 text = formatBubbleTime(item.message.dateCreated),
@@ -198,6 +213,20 @@ fun MessageBubble(
                 modifier = Modifier.padding(top = 2.dp, start = 4.dp, end = 4.dp),
             )
         }
+    }
+}
+
+/** "Read" wins over "Delivered"; null when neither timestamp is set or [show] is false. */
+internal fun deliveryReceiptLabel(
+    show: Boolean,
+    dateDelivered: Long?,
+    dateRead: Long?,
+): String? {
+    if (!show) return null
+    return when {
+        dateRead != null -> "Read"
+        dateDelivered != null -> "Delivered"
+        else -> null
     }
 }
 
@@ -393,6 +422,54 @@ private fun SendingOwnPreview() {
     }
 }
 
+@Preview(showBackground = true, name = "Delivered + Read receipts")
+@Composable
+private fun DeliveryReceiptPreview() {
+    val ctx = LocalPlatformContext.current
+    val now = System.currentTimeMillis()
+    RebubbleTheme(dynamicColor = false) {
+        Column {
+            MessageBubble(
+                item = previewBubble(
+                    "d",
+                    "Delivered only",
+                    first = true,
+                    last = true,
+                    tail = true,
+                    dateDelivered = now,
+                ),
+                isSms = false,
+                selected = false,
+                showDeliveryReceipt = true,
+                onLongPress = {},
+                onRetry = {},
+                onDownloadAttachment = {},
+                imageLoader = ImageLoader.Builder(ctx).build(),
+                animateSendPop = false,
+            )
+            MessageBubble(
+                item = previewBubble(
+                    "r",
+                    "Read wins",
+                    first = true,
+                    last = true,
+                    tail = true,
+                    dateDelivered = now - 1_000,
+                    dateRead = now,
+                ),
+                isSms = true,
+                selected = false,
+                showDeliveryReceipt = true,
+                onLongPress = {},
+                onRetry = {},
+                onDownloadAttachment = {},
+                imageLoader = ImageLoader.Builder(ctx).build(),
+                animateSendPop = false,
+            )
+        }
+    }
+}
+
 private fun previewBubble(
     guid: String,
     text: String,
@@ -402,6 +479,8 @@ private fun previewBubble(
     tail: Boolean,
     status: SendStatus = SendStatus.SENT,
     attachments: List<AttachmentEntity> = emptyList(),
+    dateDelivered: Long? = null,
+    dateRead: Long? = null,
 ) = ChatUiItem.Bubble(
     message = MessageEntity(
         guid = guid,
@@ -412,8 +491,8 @@ private fun previewBubble(
         isFromMe = fromMe,
         senderAddress = null,
         dateCreated = System.currentTimeMillis(),
-        dateRead = null,
-        dateDelivered = null,
+        dateRead = dateRead,
+        dateDelivered = dateDelivered,
         groupTitle = null,
         associatedMessageGuid = null,
         associatedMessageType = null,

@@ -70,6 +70,8 @@ class ChatViewModel @Inject constructor(
         ChatUiState(
             title = chat?.title ?: chatGuid,
             isSms = chatGuid.startsWith(SMS_GUID_PREFIX),
+            avatarPath = chat?.avatarPath,
+            isGroup = chat?.isGroup == true,
             items = buildChatItems(messages, byMessage, contacts),
             endReached = reached,
             loading = false,

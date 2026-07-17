@@ -101,6 +101,9 @@ fun RebubbleNavHost(
         ) {
             ChatRoute(
                 onBack = { navController.popBackStack() },
+                onSettingsClick = {
+                    navController.navigate(RebubbleRoutes.SETTINGS)
+                },
             )
         }
         composable(RebubbleRoutes.SETTINGS) {

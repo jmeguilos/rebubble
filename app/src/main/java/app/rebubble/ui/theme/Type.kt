@@ -61,6 +61,13 @@ val Typography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.1.sp,
     ),
+    titleSmall = TextStyle(
+        fontFamily = ManropeFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.1.sp,
+    ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,

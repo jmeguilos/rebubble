@@ -1,6 +1,5 @@
 package app.rebubble.ui.chatlist
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,12 +7,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -36,30 +40,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.rebubble.data.media.CoilImageLoaderEntryPoint
 import app.rebubble.data.repo.ChatListItem
 import app.rebubble.data.sync.SyncStatus
+import app.rebubble.ui.common.ChatAvatar
+import app.rebubble.ui.common.ChatAvatarSizeLarge
 import app.rebubble.ui.common.SearchConversationsPill
 import app.rebubble.ui.common.SyncStatusChip
 import app.rebubble.ui.theme.ListSheetTopShape
 import app.rebubble.ui.theme.RebubbleTheme
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import dagger.hilt.android.EntryPointAccessors
-import java.io.File
 import kotlinx.coroutines.launch
 
 private const val SEARCH_COMING_SOON = "Search is coming soon."
-private val AvatarSize = 56.dp
 private val RowMinHeight = 76.dp
 private val HeaderIconSize = 32.dp
 
@@ -106,16 +106,18 @@ fun ChatListScreen(
         is ChatListUiState.Empty -> uiState.syncStatus
         is ChatListUiState.Loaded -> uiState.syncStatus
     }
+    val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { innerPadding ->
+    ) { _ ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .windowInsetsPadding(WindowInsets.statusBars),
         ) {
             ChatListHeader(onSettingsClick = onSettingsClick)
 
@@ -130,6 +132,7 @@ fun ChatListScreen(
 
             SyncStatusChipSlot(status = syncStatus)
 
+            // Sheet paints to the physical bottom edge; list/empty content pads for nav bars.
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -142,20 +145,26 @@ fun ChatListScreen(
                 when (uiState) {
                     ChatListUiState.Loading -> {
                         Box(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = navBarBottom),
                             contentAlignment = Alignment.Center,
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(36.dp))
                         }
                     }
                     is ChatListUiState.Empty -> {
-                        ChatListEmptyState(modifier = Modifier.fillMaxSize())
+                        ChatListEmptyState(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = navBarBottom),
+                        )
                     }
                     is ChatListUiState.Loaded -> {
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp + navBarBottom),
                         ) {
                             items(
                                 items = uiState.items,
@@ -297,6 +306,7 @@ private fun ChatListRow(
             avatarPath = item.avatarPath,
             isGroup = item.isGroup,
             imageLoader = imageLoader,
+            size = ChatAvatarSizeLarge,
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -328,97 +338,6 @@ private fun ChatListRow(
     }
 }
 
-@Composable
-private fun ChatAvatar(
-    title: String,
-    avatarPath: String?,
-    isGroup: Boolean,
-    imageLoader: ImageLoader,
-    modifier: Modifier = Modifier,
-) {
-    val initials = remember(title) { titleInitials(title) }
-    Box(
-        modifier = modifier.size(AvatarSize),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (!avatarPath.isNullOrBlank() && File(avatarPath).isFile) {
-            AsyncImage(
-                model = File(avatarPath),
-                contentDescription = null,
-                imageLoader = imageLoader,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape),
-            )
-        } else if (isGroup) {
-            StackedMonogram(initials = initials)
-        } else {
-            MonogramCircle(initials = initials, size = AvatarSize)
-        }
-    }
-}
-
-@Composable
-private fun MonogramCircle(
-    initials: String,
-    size: Dp,
-    modifier: Modifier = Modifier,
-) {
-    val textStyle = if (size >= AvatarSize) {
-        MaterialTheme.typography.titleMedium
-    } else {
-        MaterialTheme.typography.labelLarge
-    }
-    Box(
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = initials,
-            style = textStyle,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-    }
-}
-
-/** Quiet group treatment: two overlapping tonal monogram discs inside the 56dp avatar. */
-@Composable
-private fun StackedMonogram(
-    initials: String,
-    modifier: Modifier = Modifier,
-) {
-    val primary = initials.take(1).ifEmpty { "?" }
-    val secondary = initials.drop(1).take(1).ifEmpty { primary }
-    Box(modifier = modifier.size(AvatarSize)) {
-        MonogramCircle(
-            initials = secondary,
-            size = 36.dp,
-            modifier = Modifier.align(Alignment.TopEnd),
-        )
-        MonogramCircle(
-            initials = primary,
-            size = 36.dp,
-            modifier = Modifier.align(Alignment.BottomStart),
-        )
-    }
-}
-
-internal fun titleInitials(title: String): String {
-    val parts = title.split(',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
-    return when {
-        parts.isEmpty() -> "?"
-        parts.size == 1 -> parts[0].take(2).uppercase()
-        else -> buildString {
-            append(parts[0].first().uppercaseChar())
-            append(parts[1].first().uppercaseChar())
-        }
-    }
-}
-
 // region Previews
 
 private fun previewItems(nowMs: Long): List<ChatListItem> = listOf(
@@ -440,7 +359,7 @@ private fun previewItems(nowMs: Long): List<ChatListItem> = listOf(
     ),
     ChatListItem(
         guid = "3",
-        title = "Dad",
+        title = "+15551234567",
         isGroup = false,
         lastMessageDate = nowMs - 86_400_000,
         lastMessagePreview = "Call me when you land",
