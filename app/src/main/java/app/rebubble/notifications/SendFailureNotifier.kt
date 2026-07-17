@@ -33,7 +33,7 @@ class SendFailureNotifier @Inject constructor(
         )
 
         val notification = NotificationCompat.Builder(context, NotificationChannels.ERRORS)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_rebubble)
             .setContentTitle(CONTENT_TITLE)
             .setContentText(CONTENT_TEXT)
             .setContentIntent(contentIntent)

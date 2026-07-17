@@ -154,7 +154,7 @@ class MessageNotifier @Inject constructor(
             .build()
 
         val notification = NotificationCompat.Builder(context, NotificationChannels.MESSAGES)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_rebubble)
             .setStyle(style)
             .setContentIntent(contentIntent)
             .addAction(replyAction)
@@ -178,7 +178,7 @@ class MessageNotifier @Inject constructor(
 
     private fun postSummaryNotification() {
         val summary = NotificationCompat.Builder(context, NotificationChannels.MESSAGES)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_rebubble)
             .setContentTitle(SUMMARY_TITLE)
             .setContentText(SUMMARY_TEXT)
             .setStyle(
