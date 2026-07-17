@@ -12,6 +12,8 @@ object OnboardingCopy {
     const val RETRY = "Try again"
     const val BACK = "Back"
     const val SYNCING = "Syncing your conversations…"
+    const val SYNC_FAILED =
+        "Couldn't sync your conversations. Check your connection and try again."
     const val NOTIFICATIONS_LIMITED = "Notifications limited — using periodic sync."
     const val PASSWORD_REJECTED =
         "The server rejected that password. Check it in the BlueBubbles server app."

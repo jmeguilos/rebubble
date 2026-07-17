@@ -201,6 +201,12 @@ fun OnboardingScreen(
                     showProgress = true,
                 )
 
+                is OnboardingUiState.SyncError -> ErrorPane(
+                    message = current.message,
+                    onRetry = onRetry,
+                    onBack = onBack,
+                )
+
                 is OnboardingUiState.Done -> StatusPane(
                     title = "You're connected",
                     body = if (current.notificationsLimited) {
@@ -488,6 +494,114 @@ private fun PasswordErrorPreview() {
     RebubbleTheme(dynamicColor = false) {
         OnboardingScreen(
             state = OnboardingUiState.PasswordError(url = "https://h", password = "x"),
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Qr error")
+@Composable
+private fun QrErrorPreview() {
+    RebubbleTheme(dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.QrError(),
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Validating")
+@Composable
+private fun ValidatingPreview() {
+    RebubbleTheme(dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.Validating,
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Unreachable")
+@Composable
+private fun UnreachablePreview() {
+    RebubbleTheme(dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.Unreachable(url = "https://h", password = "x"),
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Done")
+@Composable
+private fun DonePreview() {
+    RebubbleTheme(dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.Done(),
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Done notifications limited")
+@Composable
+private fun DoneNotificationsLimitedPreview() {
+    RebubbleTheme(dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.Done(notificationsLimited = true),
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Sync error")
+@Composable
+private fun SyncErrorPreview() {
+    RebubbleTheme(dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.SyncError(),
             onScanQr = {},
             onEnterManual = {},
             onUrlChange = {},

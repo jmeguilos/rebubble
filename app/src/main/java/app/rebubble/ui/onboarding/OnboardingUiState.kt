@@ -31,6 +31,10 @@ sealed interface OnboardingUiState {
 
     data object Syncing : OnboardingUiState
 
+    data class SyncError(
+        val message: String = OnboardingCopy.SYNC_FAILED,
+    ) : OnboardingUiState
+
     data class Done(
         val notificationsLimited: Boolean = false,
     ) : OnboardingUiState

@@ -24,6 +24,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -131,6 +132,7 @@ class OnboardingViewModelTest {
         is OnboardingUiState.PasswordError,
         is OnboardingUiState.Unreachable,
         is OnboardingUiState.QrError,
+        is OnboardingUiState.SyncError,
         -> true
         else -> false
     }
@@ -251,5 +253,63 @@ class OnboardingViewModelTest {
             RebubbleRoutes.CHATS,
             startDestinationForConfig(ServerConfig("https://h", "pw")),
         )
+    }
+
+    @Test
+    fun `queryMaxRowId IOException yields SyncError without stuck Syncing or FCM`() = runBlocking {
+        enqueueServerInfoOk()
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
+
+        val vm = viewModel()
+        vm.connectManual(url = serverUrl(), password = "pw")
+        val err = vm.awaitTerminal() as OnboardingUiState.SyncError
+
+        assertEquals(OnboardingCopy.SYNC_FAILED, err.message)
+        assertFalse(vm.uiState.value is OnboardingUiState.Syncing)
+        assertEquals(0, reconcileCalls.get())
+        assertFalse(callOrder.contains("fcm"))
+        assertFalse(OnboardingEvent.NavigateToChats in vm.events.replayCache)
+    }
+
+    @Test
+    fun `reconcile SyncOutcome error yields SyncError and skips FCM`() = runBlocking {
+        enqueueServerInfoOk()
+        enqueueMaxRowId(5)
+        reconcileResult = SyncOutcome(emptyList(), IOException("network down"))
+
+        val vm = viewModel()
+        vm.connectManual(url = serverUrl(), password = "pw")
+        val err = vm.awaitTerminal() as OnboardingUiState.SyncError
+
+        assertEquals(OnboardingCopy.SYNC_FAILED, err.message)
+        assertEquals(1, reconcileCalls.get())
+        assertFalse(callOrder.contains("fcm"))
+        assertFalse(OnboardingEvent.NavigateToChats in vm.events.replayCache)
+    }
+
+    @Test
+    fun `retry from SyncError re-runs first sync and can reach Done`() = runBlocking {
+        enqueueServerInfoOk()
+        enqueueMaxRowId(11)
+        reconcileResult = SyncOutcome(emptyList(), IOException("first fail"))
+
+        val vm = viewModel()
+        vm.connectManual(url = serverUrl(), password = "pw")
+        assertTrue(vm.awaitTerminal() is OnboardingUiState.SyncError)
+        assertEquals(1, reconcileCalls.get())
+        assertFalse(callOrder.contains("fcm"))
+
+        enqueueMaxRowId(11)
+        reconcileResult = SyncOutcome(emptyList(), null)
+        callOrder.clear()
+
+        vm.retryConnect()
+        val done = vm.awaitTerminal() as OnboardingUiState.Done
+
+        assertEquals(2, reconcileCalls.get())
+        assertEquals(listOf("reconcile(watermark=11)", "fcm"), callOrder)
+        assertFalse(done.notificationsLimited)
+        assertTrue(OnboardingEvent.NavigateToChats in vm.events.replayCache)
     }
 }

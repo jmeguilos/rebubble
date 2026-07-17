@@ -13,6 +13,7 @@ import app.rebubble.data.sync.SyncStatusTracker
 import app.rebubble.data.sync.SyncWatermarkStore
 import app.rebubble.notifications.FcmSetupResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -94,13 +95,21 @@ class OnboardingViewModel @Inject constructor(
     }
 
     fun retryConnect() {
-        val (url, password) = when (val state = _uiState.value) {
-            is OnboardingUiState.PasswordError -> state.url to state.password
-            is OnboardingUiState.Unreachable -> state.url to state.password
-            else -> lastUrl to lastPassword
+        when (val state = _uiState.value) {
+            is OnboardingUiState.SyncError -> {
+                viewModelScope.launch { finishAfterFirstSync() }
+                return
+            }
+            else -> {
+                val (url, password) = when (state) {
+                    is OnboardingUiState.PasswordError -> state.url to state.password
+                    is OnboardingUiState.Unreachable -> state.url to state.password
+                    else -> lastUrl to lastPassword
+                }
+                if (url.isBlank() || password.isBlank()) return
+                viewModelScope.launch { validateAndContinue(url, password) }
+            }
         }
-        if (url.isBlank() || password.isBlank()) return
-        viewModelScope.launch { validateAndContinue(url, password) }
     }
 
     fun onQrPayload(raw: String) {
@@ -138,8 +147,13 @@ class OnboardingViewModel @Inject constructor(
             return
         }
 
+        finishAfterFirstSync()
+    }
+
+    /** Runs first sync then FCM/Done. Retry from [OnboardingUiState.SyncError] re-enters here. */
+    private suspend fun finishAfterFirstSync() {
         _uiState.value = OnboardingUiState.Syncing
-        runFirstSync()
+        if (!runFirstSync()) return
 
         val fcm = setupFcm()
         val limited = fcm is FcmSetupResult.Failure
@@ -148,10 +162,27 @@ class OnboardingViewModel @Inject constructor(
         _events.emit(OnboardingEvent.NavigateToChats)
     }
 
-    private suspend fun runFirstSync() {
-        val maxRowId = queryMaxRowId()
-        watermarkStore.initializeIfAbsent(maxRowId)
-        syncStatusTracker.track { reconcile() }
+    /**
+     * Watermark seed + reconcile. Returns true on a clean sync; sets [OnboardingUiState.SyncError]
+     * and returns false on failure. [CancellationException] is rethrown.
+     */
+    private suspend fun runFirstSync(): Boolean {
+        return try {
+            val maxRowId = queryMaxRowId()
+            watermarkStore.initializeIfAbsent(maxRowId)
+            val outcome = syncStatusTracker.track { reconcile() }
+            if (outcome.error != null) {
+                _uiState.value = OnboardingUiState.SyncError(OnboardingCopy.SYNC_FAILED)
+                false
+            } else {
+                true
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            _uiState.value = OnboardingUiState.SyncError(OnboardingCopy.SYNC_FAILED)
+            false
+        }
     }
 
     private suspend fun queryMaxRowId(): Long {
