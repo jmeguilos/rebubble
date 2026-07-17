@@ -243,18 +243,66 @@ class OutboxSendTextTest {
         assertEquals(1, db.messageDao().observeMessages(CHAT_GUID, limit = 100).first().size)
     }
 
-    // --- 3. IOException → retry ----------------------------------------------------------------
+    // --- 3. Safe IOException → retry -----------------------------------------------------------
 
     @Test
-    fun `worker IOException returns retry and leaves row SENDING`() = runBlocking {
+    fun `worker connect-refused IOException returns retry and leaves row SENDING`() = runBlocking {
         seedChat()
         val tempGuid = outbox.sendText(CHAT_GUID, TEXT)
-        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
+        // Request never left the client — connection refused to a shut-down listener.
+        server.shutdown()
 
         val result = buildWorker(tempGuid).doWork()
 
         assertEquals(ListenableWorker.Result.retry(), result)
         assertEquals(SendStatus.SENDING, db.messageDao().getByGuid(tempGuid)?.sendStatus)
+    }
+
+    // --- 3b. Ambiguous IOException → FAILED ----------------------------------------------------
+
+    @Test
+    fun `worker ambiguous read failure marks FAILED and returns failure`() = runBlocking {
+        seedChat()
+        val tempGuid = outbox.sendText(CHAT_GUID, TEXT)
+        // Request may have been accepted; no response body → ambiguous mid-flight outcome.
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
+        val shortTimeoutApi = testBlueBubblesApi(
+            FakeServerCredentialsProvider(
+                urlValue = server.url("/").toString(),
+                passwordValue = "pw",
+            ),
+            readTimeoutMs = 250,
+        )
+        val worker = TestListenableWorkerBuilder<SendTextWorker>(context)
+            .setInputData(
+                workDataOf(
+                    SendTextWorker.KEY_TEMP_GUID to tempGuid,
+                    SendTextWorker.KEY_CHAT_GUID to CHAT_GUID,
+                    SendTextWorker.KEY_TEXT to TEXT,
+                ),
+            )
+            .setWorkerFactory(
+                object : WorkerFactory() {
+                    override fun createWorker(
+                        appContext: Context,
+                        workerClassName: String,
+                        workerParameters: WorkerParameters,
+                    ): ListenableWorker = SendTextWorker(
+                        appContext,
+                        workerParameters,
+                        shortTimeoutApi,
+                        db.messageDao(),
+                        ingestor,
+                        serverConfig,
+                    )
+                },
+            )
+            .build()
+
+        val result = worker.doWork()
+
+        assertEquals(ListenableWorker.Result.failure(), result)
+        assertEquals(SendStatus.FAILED, db.messageDao().getByGuid(tempGuid)?.sendStatus)
     }
 
     // --- 4. 400 → FAILED -----------------------------------------------------------------------
@@ -270,6 +318,58 @@ class OutboxSendTextTest {
         )
 
         val result = buildWorker(tempGuid).doWork()
+
+        assertEquals(ListenableWorker.Result.failure(), result)
+        assertEquals(SendStatus.FAILED, db.messageDao().getByGuid(tempGuid)?.sendStatus)
+    }
+
+    @Test
+    fun `worker 400 already queued marks FAILED without retry`() = runBlocking {
+        seedChat()
+        val tempGuid = outbox.sendText(CHAT_GUID, TEXT)
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(400)
+                .setBody(
+                    """{"status":400,"message":"Bad Request","error":{"type":"Bad Request","message":"Message is already queued to be sent!"}}""",
+                ),
+        )
+
+        val result = buildWorker(tempGuid).doWork()
+
+        assertEquals(ListenableWorker.Result.failure(), result)
+        assertEquals(SendStatus.FAILED, db.messageDao().getByGuid(tempGuid)?.sendStatus)
+    }
+
+    // --- 4b. 5xx attempt budget ----------------------------------------------------------------
+
+    @Test
+    fun `worker 500 retries while runAttemptCount below max`() = runBlocking {
+        seedChat()
+        val tempGuid = outbox.sendText(CHAT_GUID, TEXT)
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(500)
+                .setBody("""{"status":500,"message":"err","error":{"type":"Server Error","message":"boom"}}"""),
+        )
+
+        val result = buildWorker(tempGuid, runAttemptCount = 1).doWork()
+
+        assertEquals(ListenableWorker.Result.retry(), result)
+        assertEquals(SendStatus.SENDING, db.messageDao().getByGuid(tempGuid)?.sendStatus)
+    }
+
+    @Test
+    fun `worker 500 marks FAILED when runAttemptCount at max`() = runBlocking {
+        seedChat()
+        val tempGuid = outbox.sendText(CHAT_GUID, TEXT)
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(500)
+                .setBody("""{"status":500,"message":"err","error":{"type":"Server Error","message":"boom"}}"""),
+        )
+
+        val result = buildWorker(tempGuid, runAttemptCount = 3).doWork()
 
         assertEquals(ListenableWorker.Result.failure(), result)
         assertEquals(SendStatus.FAILED, db.messageDao().getByGuid(tempGuid)?.sendStatus)

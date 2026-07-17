@@ -21,7 +21,16 @@ import javax.inject.Singleton
 /**
  * Optimistic text-send outbox. Inserts a local `temp-<8hex>` [MessageEntity] at
  * [SendStatus.SENDING], updates the chat preview, and enqueues a unique
- * [SendTextWorker] keyed by that tempGuid (server-side idempotency key).
+ * [SendTextWorker] keyed by that tempGuid.
+ *
+ * ## Server tempGuid semantics (BlueBubbles)
+ *
+ * Server dedup is **in-flight only** (`sendCache` in `messageRouter.ts` /
+ * `messageValidator.ts`): a completed send is **not** deduped, so auto-retry after an
+ * ambiguous outcome can double-send on the wire. Socket echoes for API-sent messages are
+ * suppressed via the same cache; a lost HTTP ack surfaces later via reconciliation as a
+ * separate real-guid row with no tempGuid link (cannot swap our temp row). A visible
+ * duplicate after manual retry is acceptable M1 behavior.
  *
  * Attachment send lives in T10.
  */
