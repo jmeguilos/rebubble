@@ -1,0 +1,35 @@
+{
+  "_source": "Derived from message-page.json[0] + chats[]; socket emits raw MessageSerializer output (includeChats:true) — packages/server/src/server/index.ts handleNewMessage. _source is test provenance only (ignoreUnknownKeys).",
+  "originalROWID": 501,
+  "guid": "p:0/A1B2C3D4-0000-0000-0000-000000000001",
+  "text": "Hey, are we still on for Saturday?",
+  "subject": null,
+  "error": 0,
+  "dateCreated": 1752345600000,
+  "dateRead": 1752345660000,
+  "dateDelivered": 1752345605000,
+  "isFromMe": false,
+  "handle": { "originalROWID": 4, "address": "+15557654321", "service": "iMessage" },
+  "handleId": 4,
+  "attachments": [],
+  "itemType": 0,
+  "groupTitle": null,
+  "groupActionType": 0,
+  "associatedMessageGuid": null,
+  "associatedMessageType": null,
+  "threadOriginatorGuid": null,
+  "threadOriginatorPart": null,
+  "expressiveSendStyleId": null,
+  "dateEdited": null,
+  "dateRetracted": null,
+  "chats": [
+    {
+      "guid": "iMessage;-;+15557654321",
+      "style": 45,
+      "chatIdentifier": "+15557654321",
+      "displayName": null,
+      "participants": [],
+      "isArchived": false
+    }
+  ]
+}
