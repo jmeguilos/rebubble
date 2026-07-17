@@ -18,8 +18,8 @@ const { Server } = require("socket.io");
 
 const PORT = Number(process.env.PORT || 12346);
 const PASSWORD = process.env.FIXTURE_PASSWORD || "fixture-pass";
-/** Exhaust SendTextWorker auto-retries (attempts 0..3) then succeed so UI shows tap-to-retry. */
-const FAIL_SEND_BUDGET = process.env.FAIL_FIRST_SEND === "1" ? 4 : 0;
+/** One terminal 400 so UI shows tap-to-retry immediately (no WorkManager 5xx backoff). */
+const FAIL_SEND_BUDGET = process.env.FAIL_FIRST_SEND === "1" ? 1 : 0;
 
 const DM_GUID = "iMessage;-;+15550100001";
 const GROUP_GUID = "iMessage;+;chatfixturefriends";
@@ -267,8 +267,8 @@ app.get("/api/v1/chat/:guid/message", requireGuid, (req, res) => {
 app.post("/api/v1/message/text", requireGuid, (req, res) => {
   if (sendFailRemaining > 0) {
     sendFailRemaining -= 1;
-    return res.status(500).json(
-      err(500, "Internal Server Error", "Server Error", "Fixture FAIL_FIRST_SEND"),
+    return res.status(400).json(
+      err(400, "You've made a bad request! Please check your request params & body", "Validation Error", "Fixture-injected send failure"),
     );
   }
   const { chatGuid, tempGuid, message } = req.body || {};
@@ -368,6 +368,6 @@ seedInitial();
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Rebubble fixture server on http://0.0.0.0:${PORT} (password=${PASSWORD})`);
   if (FAIL_SEND_BUDGET > 0) {
-    console.log(`FAIL_FIRST_SEND: first ${FAIL_SEND_BUDGET} /message/text → 500`);
+    console.log(`FAIL_FIRST_SEND: first /message/text → 400 (Validation Error), then succeed`);
   }
 });

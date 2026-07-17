@@ -2,9 +2,9 @@ appId: app.rebubble.android
 ---
 # Send-fail → tap retry. Start the fixture server with FAIL_FIRST_SEND=1:
 #   FAIL_FIRST_SEND=1 node server.js
-# Assumes onboarded state (run flow-onboard.yaml first). The server returns HTTP 500
-# enough times to exhaust WorkManager auto-retries (~10s+20s+40s backoff), then succeeds
-# on the manual retry.
+# Assumes onboarded state (run flow-onboard.yaml first). The server returns a single
+# terminal HTTP 400 on the first /message/text, so FAILED UX appears quickly (no 5xx
+# WorkManager backoff). Manual retry succeeds.
 - launchApp
 - extendedWaitUntil:
     visible: "Fixture Friends"
@@ -19,9 +19,8 @@ appId: app.rebubble.android
     accessibilityText: "Send"
 - extendedWaitUntil:
     visible: "Not sent — tap to retry"
-    timeout: 180000
+    timeout: 30000
 - tapOn: "Not sent — tap to retry"
 - extendedWaitUntil:
-    visible: "Fail then retry"
+    notVisible: "Not sent — tap to retry"
     timeout: 30000
-- assertNotVisible: "Not sent — tap to retry"

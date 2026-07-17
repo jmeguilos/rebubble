@@ -23,7 +23,7 @@ The Android emulator reaches the host machine at `10.0.2.2`. In onboarding, use:
 
 | Env | Effect |
 |---|---|
-| `FAIL_FIRST_SEND=1` | First outbound text send fails with HTTP 500 enough times to exhaust the app's WorkManager auto-retries (4), then succeeds — so the UI shows **Not sent — tap to retry**, and a manual retry works. |
+| `FAIL_FIRST_SEND=1` | First outbound text send fails once with HTTP **400** (`error.type` "Validation Error", message "Fixture-injected send failure") — terminal in the app (no retries) — then succeeds on subsequent requests so **Not sent — tap to retry** appears quickly and a manual retry works. |
 | `FIXTURE_PASSWORD=…` | Auth password for `?guid=` and socket handshake. |
 | `PORT=…` | Listen port (default `12346`). |
 
