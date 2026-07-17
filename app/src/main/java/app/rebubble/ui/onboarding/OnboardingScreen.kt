@@ -21,21 +21,24 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,7 +51,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -58,9 +60,20 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.rebubble.ui.theme.ListSheetTopShape
 import app.rebubble.ui.theme.RebubbleTheme
 import com.journeyapps.barcodescanner.ScanContract
 import kotlinx.coroutines.flow.collectLatest
+
+private val BrandBubbleShape = RoundedCornerShape(
+    topStart = 28.dp,
+    topEnd = 28.dp,
+    bottomEnd = 28.dp,
+    bottomStart = 10.dp,
+)
+private val CtaHeight = 56.dp
+private val CtaGap = 16.dp
+private val ScreenRhythm = 24.dp
 
 @Composable
 fun OnboardingRoute(
@@ -141,18 +154,10 @@ fun OnboardingScreen(
     onDismissQrError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val gradient = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.surface,
-        ),
-    )
-
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(gradient),
+            .background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
         AnimatedContent(
             targetState = state,
@@ -261,60 +266,74 @@ private fun WelcomePane(
     onEnterManual: () -> Unit,
     onDismissQrError: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 48.dp),
-        verticalArrangement = Arrangement.Bottom,
-    ) {
-        BrandMark()
-        VerticalSpace(28.dp)
-        Text(
-            text = OnboardingCopy.BRAND,
-            style = MaterialTheme.typography.displayMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        VerticalSpace(12.dp)
-        Text(
-            text = OnboardingCopy.SCREEN_TITLE,
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        VerticalSpace(8.dp)
-        Text(
-            text = OnboardingCopy.SCREEN_SUBTITLE,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (qrError != null) {
-            VerticalSpace(16.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = ScreenRhythm)
+                // Leave room for the pinned CTA stack + error strip.
+                .padding(bottom = CtaHeight * 2 + CtaGap + ScreenRhythm * 2),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            BrandMark()
+            VerticalSpace(ScreenRhythm)
             Text(
-                text = qrError,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
+                text = OnboardingCopy.BRAND,
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
             )
-            TextButton(onClick = onDismissQrError) {
-                Text(OnboardingCopy.BACK)
+            VerticalSpace(12.dp)
+            Text(
+                text = OnboardingCopy.SCREEN_SUBTITLE,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(horizontal = ScreenRhythm, vertical = ScreenRhythm),
+        ) {
+            if (qrError != null) {
+                Text(
+                    text = qrError,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextButton(
+                    onClick = onDismissQrError,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                ) {
+                    Text(OnboardingCopy.BACK)
+                }
+                VerticalSpace(8.dp)
             }
-        }
-        VerticalSpace(36.dp)
-        Button(
-            onClick = onScanQr,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-        ) {
-            Text(OnboardingCopy.SCAN_QR)
-        }
-        VerticalSpace(12.dp)
-        OutlinedButton(
-            onClick = onEnterManual,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-        ) {
-            Text(OnboardingCopy.ENTER_MANUAL)
+            Button(
+                onClick = onScanQr,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(CtaHeight),
+            ) {
+                Text(OnboardingCopy.SCAN_QR)
+            }
+            VerticalSpace(CtaGap)
+            FilledTonalButton(
+                onClick = onEnterManual,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(CtaHeight),
+            ) {
+                Text(OnboardingCopy.ENTER_MANUAL)
+            }
         }
     }
 }
@@ -334,62 +353,96 @@ private fun ManualPane(
     var url by rememberSaveable { mutableStateOf(state.url) }
     var password by rememberSaveable { mutableStateOf(state.password) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 40.dp),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = OnboardingCopy.ENTER_MANUAL,
-            style = MaterialTheme.typography.headlineSmall,
-        )
-        VerticalSpace(20.dp)
-        OutlinedTextField(
-            value = url,
-            onValueChange = {
-                url = it
-                onUrlChange(it)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(OnboardingCopy.URL_LABEL) },
-            singleLine = true,
-            enabled = !state.isSubmitting,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-        )
-        VerticalSpace(12.dp)
-        OutlinedTextField(
-            value = password,
-            onValueChange = {
-                password = it
-                onPasswordChange(it)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(OnboardingCopy.PASSWORD_LABEL) },
-            singleLine = true,
-            enabled = !state.isSubmitting,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        )
-        state.errorMessage?.let { message ->
-            VerticalSpace(12.dp)
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = ScreenRhythm, vertical = ScreenRhythm),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
+                text = OnboardingCopy.ENTER_MANUAL,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+            VerticalSpace(8.dp)
+            Text(
+                text = OnboardingCopy.SCREEN_SUBTITLE,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
             )
         }
-        VerticalSpace(24.dp)
-        Button(
-            onClick = onConnect,
-            enabled = !state.isSubmitting && url.isNotBlank() && password.isNotBlank(),
-            modifier = Modifier.fillMaxWidth(),
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            shape = ListSheetTopShape,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
         ) {
-            Text(OnboardingCopy.CONNECT)
-        }
-        TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(OnboardingCopy.BACK)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = ScreenRhythm, vertical = ScreenRhythm)
+                    .windowInsetsPadding(WindowInsets.navigationBars),
+            ) {
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = {
+                        url = it
+                        onUrlChange(it)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(OnboardingCopy.URL_LABEL) },
+                    singleLine = true,
+                    enabled = !state.isSubmitting,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                )
+                VerticalSpace(12.dp)
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                        onPasswordChange(it)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(OnboardingCopy.PASSWORD_LABEL) },
+                    singleLine = true,
+                    enabled = !state.isSubmitting,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                )
+                state.errorMessage?.let { message ->
+                    VerticalSpace(12.dp)
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                VerticalSpace(ScreenRhythm)
+                Button(
+                    onClick = onConnect,
+                    enabled = !state.isSubmitting && url.isNotBlank() && password.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(CtaHeight),
+                ) {
+                    Text(OnboardingCopy.CONNECT)
+                }
+                TextButton(
+                    onClick = onBack,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                ) {
+                    Text(OnboardingCopy.BACK)
+                }
+            }
         }
     }
 }
@@ -403,19 +456,20 @@ private fun StatusPane(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(28.dp),
+            .padding(ScreenRhythm),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (showProgress) {
             // M3 1.4.0: CircularWavyProgressIndicator / MotionScheme are not public yet.
             CircularProgressIndicator(modifier = Modifier.size(56.dp), strokeWidth = 4.dp)
-            VerticalSpace(24.dp)
+            VerticalSpace(ScreenRhythm)
         }
         Text(
             text = title,
             style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         if (body != null) {
             VerticalSpace(8.dp)
@@ -435,25 +489,46 @@ private fun ErrorPane(
     onRetry: () -> Unit,
     onBack: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(28.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center,
-        )
-        VerticalSpace(24.dp)
-        Button(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
-            Text(OnboardingCopy.RETRY)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = ScreenRhythm)
+                .padding(bottom = CtaHeight + CtaGap + ScreenRhythm * 2),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
+            )
         }
-        TextButton(onClick = onBack) {
-            Text(OnboardingCopy.BACK)
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(horizontal = ScreenRhythm, vertical = ScreenRhythm),
+        ) {
+            Button(
+                onClick = onRetry,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(CtaHeight),
+            ) {
+                Text(OnboardingCopy.RETRY)
+            }
+            VerticalSpace(CtaGap)
+            FilledTonalButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(CtaHeight),
+            ) {
+                Text(OnboardingCopy.BACK)
+            }
         }
     }
 }
@@ -462,23 +537,23 @@ private fun ErrorPane(
 private fun BrandMark() {
     Box(
         modifier = Modifier
-            .size(64.dp)
-            .clip(CircleShape)
+            .size(96.dp)
+            .clip(BrandBubbleShape)
             .background(MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = "R",
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.displaySmall,
             color = MaterialTheme.colorScheme.onPrimary,
         )
     }
 }
 
-@Preview(showBackground = true, name = "Welcome")
+@Preview(showBackground = true, name = "Welcome · light")
 @Composable
 private fun WelcomePreview() {
-    RebubbleTheme(dynamicColor = false) {
+    RebubbleTheme(darkTheme = false, dynamicColor = false) {
         OnboardingScreen(
             state = OnboardingUiState.Welcome,
             onScanQr = {},
@@ -493,10 +568,32 @@ private fun WelcomePreview() {
     }
 }
 
-@Preview(showBackground = true, name = "Manual")
+@Preview(
+    showBackground = true,
+    name = "Welcome · dark",
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+)
+@Composable
+private fun WelcomeDarkPreview() {
+    RebubbleTheme(darkTheme = true, dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.Welcome,
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Manual · light")
 @Composable
 private fun ManualPreview() {
-    RebubbleTheme(dynamicColor = false) {
+    RebubbleTheme(darkTheme = false, dynamicColor = false) {
         OnboardingScreen(
             state = OnboardingUiState.ManualEntry(url = "https://mac.local:1234"),
             onScanQr = {},
@@ -511,12 +608,96 @@ private fun ManualPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "Syncing")
+@Preview(
+    showBackground = true,
+    name = "Manual · dark",
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+)
+@Composable
+private fun ManualDarkPreview() {
+    RebubbleTheme(darkTheme = true, dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.ManualEntry(url = "https://mac.local:1234"),
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Syncing · light")
 @Composable
 private fun SyncingPreview() {
-    RebubbleTheme(dynamicColor = false) {
+    RebubbleTheme(darkTheme = false, dynamicColor = false) {
         OnboardingScreen(
             state = OnboardingUiState.Syncing,
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Syncing · dark",
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+)
+@Composable
+private fun SyncingDarkPreview() {
+    RebubbleTheme(darkTheme = true, dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.Syncing,
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Done · light")
+@Composable
+private fun DonePreview() {
+    RebubbleTheme(darkTheme = false, dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.Done(),
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Done · dark",
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+)
+@Composable
+private fun DoneDarkPreview() {
+    RebubbleTheme(darkTheme = true, dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.Done(),
             onScanQr = {},
             onEnterManual = {},
             onUrlChange = {},
@@ -589,24 +770,6 @@ private fun UnreachablePreview() {
     RebubbleTheme(dynamicColor = false) {
         OnboardingScreen(
             state = OnboardingUiState.Unreachable(url = "https://h", password = "x"),
-            onScanQr = {},
-            onEnterManual = {},
-            onUrlChange = {},
-            onPasswordChange = {},
-            onConnect = {},
-            onRetry = {},
-            onBack = {},
-            onDismissQrError = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Done")
-@Composable
-private fun DonePreview() {
-    RebubbleTheme(dynamicColor = false) {
-        OnboardingScreen(
-            state = OnboardingUiState.Done(),
             onScanQr = {},
             onEnterManual = {},
             onUrlChange = {},

@@ -10,7 +10,10 @@ import app.rebubble.data.local.InMemoryDatabaseFactory
 import app.rebubble.data.local.RebubbleDatabase
 import app.rebubble.data.local.entity.AttachmentEntity
 import app.rebubble.data.local.entity.ChatEntity
+import app.rebubble.data.local.entity.ChatHandleCrossRef
+import app.rebubble.data.local.entity.ContactEntity
 import app.rebubble.data.local.entity.DownloadState
+import app.rebubble.data.local.entity.HandleEntity
 import app.rebubble.data.local.entity.MessageEntity
 import app.rebubble.data.local.entity.SendStatus
 import app.rebubble.data.media.AttachmentCache
@@ -399,6 +402,62 @@ class ChatViewModelTest {
         val state = awaitState(vm) { !it.loading }
         assertTrue(state.isSms)
         assertEquals("SMS Pal", state.title)
+    }
+
+    @Test
+    fun `avatarPath and isGroup propagate from ChatMeta`() = runBlocking {
+        val address = "+15551234567"
+        val avatar = tempFolder.newFile("alex.png").absolutePath
+        db.contactDao().upsert(
+            listOf(
+                ContactEntity(
+                    address = address,
+                    displayName = "Alex",
+                    avatarPath = avatar,
+                ),
+            ),
+        )
+        db.handleDao().upsert(
+            listOf(
+                HandleEntity(
+                    address = address,
+                    service = "iMessage",
+                ),
+            ),
+        )
+        db.handleDao().upsertChatHandleCrossRefs(
+            listOf(
+                ChatHandleCrossRef(
+                    chatGuid = chatGuid,
+                    address = address,
+                ),
+            ),
+        )
+
+        val dm = viewModel()
+        val dmState = awaitState(dm) { !it.loading && it.avatarPath == avatar }
+        assertEquals(avatar, dmState.avatarPath)
+        assertFalse(dmState.isGroup)
+        assertEquals("Alex", dmState.title)
+
+        val groupGuid = "iMessage;+;chat123"
+        db.chatDao().upsert(
+            listOf(
+                ChatEntity(
+                    guid = groupGuid,
+                    style = 43,
+                    chatIdentifier = "chat123",
+                    displayName = "Ski trip",
+                    isArchived = false,
+                    lastMessageDate = null,
+                    lastMessagePreview = null,
+                ),
+            ),
+        )
+        val groupVm = viewModel(groupGuid)
+        val groupState = awaitState(groupVm) { !it.loading && it.title == "Ski trip" }
+        assertTrue(groupState.isGroup)
+        assertNull(groupState.avatarPath)
     }
 
     // --- test doubles ---

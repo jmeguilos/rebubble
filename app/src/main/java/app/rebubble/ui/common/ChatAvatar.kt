@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,8 +31,8 @@ val ChatAvatarSizeCompact = 36.dp
 
 /**
  * Contact / group avatar: photo when [avatarPath] exists, otherwise a monogram
- * (or person glyph for phone-number-only titles). Groups use overlapping discs,
- * clipped to [size].
+ * (or person glyph for phone-number-only titles). Groups use a single clipped
+ * circle with a group glyph.
  */
 @Composable
 fun ChatAvatar(
@@ -60,13 +61,7 @@ fun ChatAvatar(
                     .clip(CircleShape),
             )
         } else if (isGroup) {
-            StackedMonogram(
-                initials = when (label) {
-                    is AvatarLabel.Initials -> label.value
-                    AvatarLabel.Person -> "?"
-                },
-                size = size,
-            )
+            GroupMonogram(size = size)
         } else {
             when (label) {
                 is AvatarLabel.Initials -> MonogramCircle(initials = label.value, size = size)
@@ -123,30 +118,27 @@ private fun PersonMonogram(
     }
 }
 
-/** Quiet group treatment: two overlapping tonal monogram discs, clipped to [size]. */
+/**
+ * Group avatar: one primary-container circle with [Icons.Outlined.Group], fully
+ * clipped to [size] so nothing spills at list or compact sizes.
+ */
 @Composable
-fun StackedMonogram(
-    initials: String,
+fun GroupMonogram(
     modifier: Modifier = Modifier,
     size: Dp = ChatAvatarSizeLarge,
 ) {
-    val disc = size * (36f / 56f)
-    val primary = initials.take(1).ifEmpty { "?" }
-    val secondary = initials.drop(1).take(1).ifEmpty { primary }
     Box(
         modifier = modifier
             .size(size)
-            .clip(CircleShape),
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
     ) {
-        MonogramCircle(
-            initials = secondary,
-            size = disc,
-            modifier = Modifier.align(Alignment.TopEnd),
-        )
-        MonogramCircle(
-            initials = primary,
-            size = disc,
-            modifier = Modifier.align(Alignment.BottomStart),
+        Icon(
+            imageVector = Icons.Outlined.Group,
+            contentDescription = null,
+            modifier = Modifier.size(size * 0.55f),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
         )
     }
 }

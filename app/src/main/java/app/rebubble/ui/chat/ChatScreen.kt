@@ -128,16 +128,7 @@ fun ChatScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Newest-first list: first own bubble is the latest outbound message.
-    val latestOwnMessageGuid by remember(uiState.items) {
-        derivedStateOf {
-            uiState.items
-                .asSequence()
-                .filterIsInstance<ChatUiItem.Bubble>()
-                .firstOrNull { it.message.isFromMe }
-                ?.message
-                ?.guid
-        }
-    }
+    val latestOwnGuid = remember(uiState.items) { latestOwnMessageGuid(uiState.items) }
 
     val shouldLoadOlder by remember {
         derivedStateOf {
@@ -227,7 +218,7 @@ fun ChatScreen(
                                         item = item,
                                         isSms = uiState.isSms,
                                         selected = selectedGuid == item.message.guid,
-                                        showDeliveryReceipt = item.message.guid == latestOwnMessageGuid,
+                                        showDeliveryReceipt = item.message.guid == latestOwnGuid,
                                         onLongPress = {
                                             selectedGuid =
                                                 if (selectedGuid == item.message.guid) {
@@ -365,6 +356,17 @@ internal fun GroupEventRow(
             .padding(horizontal = 24.dp, vertical = 8.dp),
     )
 }
+
+/**
+ * Newest-first chat list: the first own bubble is the latest outbound message.
+ * Stable when older pages are appended at the tail ([ChatViewModel.loadOlder]).
+ */
+internal fun latestOwnMessageGuid(items: List<ChatUiItem>): String? =
+    items.asSequence()
+        .filterIsInstance<ChatUiItem.Bubble>()
+        .firstOrNull { it.message.isFromMe }
+        ?.message
+        ?.guid
 
 // region Previews
 

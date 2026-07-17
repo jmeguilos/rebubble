@@ -3,7 +3,7 @@ package app.rebubble.ui.onboarding
 /** User-facing onboarding copy — sentence case, plain verbs. */
 object OnboardingCopy {
     const val SCREEN_TITLE = "Connect to your server"
-    const val SCREEN_SUBTITLE = "Link Rebubble to your BlueBubbles server to sync conversations."
+    const val SCREEN_SUBTITLE = "Connect to your BlueBubbles server to sync conversations."
     const val SCAN_QR = "Scan QR code"
     const val ENTER_MANUAL = "Enter address manually"
     const val URL_LABEL = "Server address"
