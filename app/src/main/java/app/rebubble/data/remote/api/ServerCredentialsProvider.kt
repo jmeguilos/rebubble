@@ -12,9 +12,9 @@ package app.rebubble.data.remote.api
  * The real implementation is `app.rebubble.data.repo.ServerConfigRepository`, bound in
  * `app.rebubble.di.RepositoryModule` (superseding T3's null/null placeholder that used to live in
  * `app.rebubble.di.NetworkModule`). Both methods are synchronous reads of an in-memory snapshot
- * that repository keeps current from its persisted config — see its KDoc for the resulting
- * cold-start caveat (both methods return null until that snapshot's first update, even if a
- * server is already configured on disk).
+ * that repository keeps current from its persisted config — see its KDoc for how it avoids a
+ * cold-start null on an already-configured server (a one-time synchronous prime, safe only
+ * because both callers below run on a background thread) and for its retry-on-failure behavior.
  */
 interface ServerCredentialsProvider {
     /** The user-configured server base URL (e.g. `http://192.168.1.20:1234`), or null if unset. */

@@ -50,4 +50,27 @@ class DynamicBaseUrlInterceptorTest {
         assertEquals(server.hostName, recorded.requestUrl?.host)
         assertEquals("/api/v1/server/info", recorded.path?.substringBefore("?"))
     }
+
+    @Test
+    fun `a configured url with a reverse-proxy path prefix is prepended ahead of the retrofit path`() = runBlocking {
+        // e.g. http://127.0.0.1:PORT/bluebubbles - a legitimate reverse-proxy setup, distinct from
+        // a doubled `/api/v1` suffix (which ServerConfigRepository.sanitizeUrl strips before this
+        // ever reaches the interceptor).
+        val credentials = FakeServerCredentialsProvider(
+            urlValue = server.url("/bluebubbles").toString(),
+            passwordValue = "pw"
+        )
+        val api = testBlueBubblesApi(credentials)
+
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"status":200,"message":"OK","data":{"computer_id":"c","os_version":"14","server_version":"1"}}"""
+            )
+        )
+
+        apiCall { api.serverInfo() }
+
+        val recorded = server.takeRequest()
+        assertEquals("/bluebubbles/api/v1/server/info", recorded.path?.substringBefore("?"))
+    }
 }

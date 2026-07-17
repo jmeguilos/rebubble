@@ -1,5 +1,6 @@
 package app.rebubble.data.repo
 
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -11,9 +12,15 @@ import app.rebubble.data.remote.api.apiCall
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import javax.inject.Inject
 import javax.inject.Provider
@@ -52,6 +59,11 @@ private const val SECRET_KEY_PASSWORD = "server_password"
 private const val HTTP_PREFIX = "http://"
 private const val HTTPS_PREFIX = "https://"
 
+private const val LOG_TAG = "ServerConfigRepository"
+
+/** Backoff between retries of the [ServerConfigRepository] init snapshot collector. */
+private const val COLLECTOR_RETRY_DELAY_MS = 250L
+
 /**
  * Owns the user's BlueBubbles server configuration (URL + password) and the last-known server
  * capabilities, and doubles as the production [ServerCredentialsProvider] — wired via a Hilt
@@ -64,21 +76,25 @@ private const val HTTPS_PREFIX = "https://"
  *  - the password lives behind [SecretStore] ("rebubble_secrets" in production, backed by
  *    [EncryptedSecretStore] / `EncryptedSharedPreferences`), since it is effectively a credential.
  *
- * ### The [ServerCredentialsProvider] seam and its cold-start caveat
+ * ### The [ServerCredentialsProvider] seam
  * [GuidAuthInterceptor][app.rebubble.data.remote.api.GuidAuthInterceptor] and
  * [DynamicBaseUrlInterceptor][app.rebubble.data.remote.api.DynamicBaseUrlInterceptor] call
  * [url]/[password] synchronously on every request — they can't suspend to read DataStore/
  * EncryptedSharedPreferences per call. So this repository keeps an in-memory [ServerConfig]
- * snapshot ([snapshot]) that a background collector refreshes from [config] on every emission.
+ * snapshot ([snapshot]) that a background collector (started in [init]) refreshes from [config]
+ * on every emission.
  *
- * That collector starts in [init], but its first emission hasn't necessarily landed by the time
- * [url]/[password] are first called (e.g. very early in app startup) — until it has, both return
- * `null` even if a server *is* already configured on disk. Any HTTP request made in that narrow
- * window fails with a 401 that [app.rebubble.data.remote.api.apiCall] maps to
- * [app.rebubble.data.remote.api.AuthError]. This is considered acceptable: the window is a
- * DataStore-first-read race measured in milliseconds, any caller affected can simply retry, and
- * it never actually happens pre-onboarding (there is genuinely nothing configured yet, so
- * returning null is the correct answer, not a race artifact).
+ * That collector's first emission hasn't necessarily landed by the time [url]/[password] are
+ * first called (e.g. very early in app startup, or in a freshly-constructed repository right
+ * after a process restart). Rather than surface a stale `null` in that window, [url]/[password]
+ * fall back to a one-time *synchronous* prime of [snapshot] (`runBlocking { config.first() }`)
+ * the first time either is called before the async collector has emitted — see [url]'s KDoc for
+ * why that's safe here specifically, but not in general. Once primed — whether synchronously or
+ * by the async collector — [snapshot] is kept current by the collector alone.
+ *
+ * The collector is also wrapped in [kotlinx.coroutines.flow.retryWhen] with a fixed
+ * [COLLECTOR_RETRY_DELAY_MS] backoff: a single transient DataStore/SecretStore failure must not
+ * permanently stop future config updates for the rest of the process's lifetime.
  */
 @Singleton
 class ServerConfigRepository @Inject constructor(
@@ -119,9 +135,42 @@ class ServerConfigRepository @Inject constructor(
     @Volatile
     private var snapshot: ServerConfig? = null
 
+    /**
+     * True once [snapshot] has received at least one value (sync or async). Guards the one-time
+     * synchronous prime in [primedSnapshot] so it runs at most once.
+     */
+    @Volatile
+    private var primed = false
+
+    /** Guards concurrent callers racing to perform the one-time synchronous prime. */
+    private val primeLock = Any()
+
     init {
         repositoryScope.launch {
-            config.collect { snapshot = it }
+            config
+                .retryWhen { cause, attempt ->
+                    Log.w(
+                        LOG_TAG,
+                        "config collector failed (attempt ${attempt + 1}); retrying in " +
+                            "${COLLECTOR_RETRY_DELAY_MS}ms",
+                        cause,
+                    )
+                    delay(COLLECTOR_RETRY_DELAY_MS)
+                    true
+                }
+                .catch { cause ->
+                    // retryWhen above retries unconditionally (both retryWhen and catch are
+                    // transparent to CancellationException, so scope cancellation still
+                    // propagates normally), so reaching here should be unreachable in practice.
+                    // It's a defensive backstop only, so a future change to the retry predicate
+                    // can't silently resurrect the original bug (one exception permanently
+                    // killing the collector for the rest of the process's lifetime).
+                    Log.e(LOG_TAG, "config collector terminated unexpectedly", cause)
+                }
+                .collect {
+                    snapshot = it
+                    primed = true
+                }
         }
     }
 
@@ -130,7 +179,12 @@ class ServerConfigRepository @Inject constructor(
      *
      * URL sanitization: trims surrounding whitespace; defaults the scheme to `https://` when the
      * input has none (a bare `host:port` becomes `https://host:port`); an explicit `http://` is
-     * preserved as-is (never upgraded to `https://`); trailing slashes are stripped. Throws
+     * preserved as-is (never upgraded to `https://`); trailing slashes are stripped; a trailing
+     * `api/v1` path suffix — optionally preceded by further segments, e.g. a legitimate
+     * reverse-proxy prefix like `/bluebubbles` — is stripped, since
+     * [DynamicBaseUrlInterceptor][app.rebubble.data.remote.api.DynamicBaseUrlInterceptor] already
+     * prefixes the Retrofit-configured `/api/v1/...` path ahead of every request, so keeping a
+     * pasted `api/v1` suffix verbatim would double it to `/api/v1/api/v1/...`. Throws
      * [InvalidServerConfigException] for a blank input, an unsupported scheme (only `http`/
      * `https` are accepted), or anything else that doesn't parse as a URL.
      *
@@ -179,11 +233,54 @@ class ServerConfigRepository @Inject constructor(
         return info
     }
 
-    /** See the cold-start caveat in this class's KDoc. */
-    override fun url(): String? = snapshot?.url
+    /**
+     * See the [ServerCredentialsProvider] seam section of this class's KDoc for the one-time
+     * synchronous prime this (and [password]) can trigger.
+     *
+     * Never call from the main thread. The first call made before the async snapshot collector
+     * has emitted blocks the calling thread (via `runBlocking`) to read DataStore/SecretStore
+     * synchronously. That's safe here only because the sole production callers —
+     * [app.rebubble.data.remote.api.GuidAuthInterceptor] and
+     * [app.rebubble.data.remote.api.DynamicBaseUrlInterceptor] — run as OkHttp interceptors on a
+     * background dispatcher thread, never the main thread. Calling this from the main thread
+     * could block it and risk an ANR.
+     */
+    override fun url(): String? = primedSnapshot()?.url
 
-    /** See the cold-start caveat in this class's KDoc. */
-    override fun password(): String? = snapshot?.password
+    /** See the KDoc on [url]; the same one-time synchronous-prime caveat applies here. */
+    override fun password(): String? = primedSnapshot()?.password
+
+    /**
+     * Returns [snapshot], performing a one-time synchronous prime from [config] first if the
+     * async collector (started in [init]) hasn't emitted yet. Safe to call redundantly/
+     * concurrently: [primed] is checked under [primeLock] so at most one caller actually blocks
+     * on `runBlocking` at a time.
+     *
+     * A failure during that synchronous prime (e.g. a transient DataStore/SecretStore exception)
+     * is swallowed and logged rather than thrown: [url]/[password] must never throw to their
+     * OkHttp-interceptor callers, and [primed] is deliberately left `false` on failure so a later
+     * call — another synchronous attempt, or the resilient async collector — gets to try again.
+     */
+    private fun primedSnapshot(): ServerConfig? {
+        if (!primed) {
+            synchronized(primeLock) {
+                if (!primed) {
+                    try {
+                        snapshot = runBlocking { config.first() }
+                        primed = true
+                    } catch (cause: Throwable) {
+                        Log.w(
+                            LOG_TAG,
+                            "synchronous snapshot prime failed; leaving unprimed so a later " +
+                                "call (sync retry, or the async collector) can try again",
+                            cause,
+                        )
+                    }
+                }
+            }
+        }
+        return snapshot
+    }
 }
 
 /**
@@ -209,11 +306,33 @@ private fun sanitizeUrl(raw: String): String {
     val sanitized = withScheme.trimEnd('/')
 
     // Validate via OkHttp's own URL parser rather than reinventing host/port validation. Its
-    // string form isn't used as the persisted value (it always normalizes back to a trailing
-    // "/" root path, which is exactly what stripping trailing slashes above is meant to avoid).
-    if (sanitized.toHttpUrlOrNull() == null) {
-        throw InvalidServerConfigException("Invalid server URL: $raw")
-    }
+    // string form isn't used as the persisted value below (it always normalizes back to a
+    // trailing "/" root path, which is exactly what stripping trailing slashes above is meant to
+    // avoid) — except through stripApiV1Suffix, which needs the parsed path segments anyway and
+    // takes care to rebuild the string without reintroducing that trailing slash.
+    val parsed = sanitized.toHttpUrlOrNull()
+        ?: throw InvalidServerConfigException("Invalid server URL: $raw")
 
-    return sanitized
+    return stripApiV1Suffix(parsed) ?: sanitized
+}
+
+/**
+ * Users often paste the API base straight from BlueBubbles docs/setup screens (e.g.
+ * `https://host/api/v1`), but
+ * [DynamicBaseUrlInterceptor][app.rebubble.data.remote.api.DynamicBaseUrlInterceptor] already
+ * prefixes every outgoing request with the Retrofit-configured `/api/v1/...` path, so storing
+ * that suffix verbatim would double it to `/api/v1/api/v1/...`. If [parsedUrl]'s path ends with
+ * the exact segments `api/v1` — optionally preceded by further segments, e.g. a legitimate
+ * reverse-proxy prefix like `/bluebubbles` — this strips only that trailing `api/v1`, preserving
+ * any earlier prefix. Returns null (meaning: keep the caller's already-sanitized string as-is)
+ * when the path doesn't end that way.
+ */
+private fun stripApiV1Suffix(parsedUrl: HttpUrl): String? {
+    val segments = parsedUrl.pathSegments.filter { it.isNotEmpty() }
+    if (segments.size < 2) return null
+    if (segments[segments.size - 2] != "api" || segments[segments.size - 1] != "v1") return null
+
+    val builder = parsedUrl.newBuilder().encodedPath("/")
+    segments.subList(0, segments.size - 2).forEach { builder.addPathSegment(it) }
+    return builder.build().toString().trimEnd('/')
 }

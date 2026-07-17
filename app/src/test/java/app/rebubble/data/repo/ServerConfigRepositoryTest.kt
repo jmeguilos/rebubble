@@ -143,6 +143,27 @@ class ServerConfigRepositoryTest {
     }
 
     @Test
+    fun `save strips a trailing api slash v1 suffix pasted from the docs`() = runBlocking {
+        repository.save("https://myserver.com/api/v1", "pw")
+
+        assertEquals("https://myserver.com", repository.config.first()?.url)
+    }
+
+    @Test
+    fun `save strips only the trailing api slash v1 suffix, keeping a reverse-proxy prefix`() = runBlocking {
+        repository.save("https://h/bluebubbles/api/v1", "pw")
+
+        assertEquals("https://h/bluebubbles", repository.config.first()?.url)
+    }
+
+    @Test
+    fun `save leaves a reverse-proxy path prefix unchanged when there is no api slash v1 suffix`() = runBlocking {
+        repository.save("https://h/bluebubbles", "pw")
+
+        assertEquals("https://h/bluebubbles", repository.config.first()?.url)
+    }
+
+    @Test
     fun `save rejects a blank url with a typed error`() {
         assertThrows(InvalidServerConfigException::class.java) {
             runBlocking { repository.save("   ", "pw") }
@@ -260,5 +281,62 @@ class ServerConfigRepositoryTest {
 
         assertEquals("https://host:1234", repository.url())
         assertEquals("hunter2", repository.password())
+    }
+
+    @Test
+    fun `url and password are synchronously primed on a fresh repository, no polling required`() = runBlocking {
+        val dataStore = newDataStore()
+        val secretStore = InMemorySecretStore()
+
+        val repo1 = buildRepository(dataStore = dataStore, secretStore = secretStore)
+        repo1.save("host:1234", "hunter2")
+
+        // Simulate a process restart: a brand-new repository instance wrapping the same
+        // underlying DataStore file + secret store, given no time for its own async snapshot
+        // collector to have emitted yet. Calling url()/password() immediately must still see the
+        // already-persisted config rather than a cold-start null.
+        val repo2 = buildRepository(dataStore = dataStore, secretStore = secretStore)
+
+        assertEquals("https://host:1234", repo2.url())
+        assertEquals("hunter2", repo2.password())
+    }
+
+    @Test
+    fun `init collector recovers from a transient SecretStore exception, snapshot eventually reflects config`() = runBlocking {
+        val dataStore = newDataStore()
+        val secretStore = ThrowOnceThenDelegateSecretStore(InMemorySecretStore())
+        val repo = buildRepository(dataStore = dataStore, secretStore = secretStore)
+
+        repo.save("host:1234", "hunter2")
+
+        withTimeout(5_000) {
+            while (repo.url() == null) {
+                delay(10)
+            }
+        }
+
+        assertEquals("https://host:1234", repo.url())
+        assertEquals("hunter2", repo.password())
+    }
+
+    /**
+     * [SecretStore] fake whose [getString] throws once (simulating a transient
+     * DataStore/EncryptedSharedPreferences failure) before delegating normally on every
+     * subsequent call — used to exercise the init collector's `retryWhen` resilience.
+     */
+    private class ThrowOnceThenDelegateSecretStore(private val delegate: SecretStore) : SecretStore {
+        private var thrown = false
+
+        override fun putString(key: String, value: String) = delegate.putString(key, value)
+
+        override fun getString(key: String): String? {
+            if (!thrown) {
+                thrown = true
+                throw IllegalStateException("simulated transient SecretStore failure")
+            }
+            return delegate.getString(key)
+        }
+
+        override fun remove(key: String) = delegate.remove(key)
     }
 }
