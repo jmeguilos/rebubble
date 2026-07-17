@@ -3,10 +3,9 @@ package app.rebubble.data.repo
 import app.rebubble.data.local.dao.ChatDao
 import app.rebubble.data.local.dao.ContactDao
 import app.rebubble.data.local.dao.HandleDao
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import app.rebubble.data.local.entity.HandleEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.mapLatest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,12 +17,14 @@ data class ChatListItem(
     val lastMessageDate: Long?,
     val lastMessagePreview: String?,
     val style: Int,
+    /** Contact avatar path for 1:1 chats when known; null → monogram (or group treatment). */
+    val avatarPath: String? = null,
 )
 
 /**
- * Read path for the conversation list. Combines [ChatDao.observeChats] with
- * [ContactDao.observeContacts] so a contact rename re-resolves titles; per emission, loads each
- * chat's participants via [HandleDao.participantsFor] (suspend) inside [mapLatest].
+ * Read path for the conversation list. Combines [ChatDao.observeChats],
+ * [ContactDao.observeContacts], and a single [HandleDao.observeAllChatParticipants] join so each
+ * emission is one participants query for the whole list (not N+1 [HandleDao.participantsFor]).
  *
  * Title resolution: [resolveChatTitle]. [ChatListItem.isGroup] is `style == 43`
  * (BlueBubbles group chat style — [GROUP_CHAT_STYLE]).
@@ -37,24 +38,32 @@ class ChatRepository @Inject constructor(
     private val contactDao: ContactDao,
 ) {
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     fun observeChats(): Flow<List<ChatListItem>> =
         combine(
             chatDao.observeChats(),
             contactDao.observeContacts(),
-        ) { chats, contacts -> chats to contacts }
-            .mapLatest { (chats, contacts) ->
-                val contactsByAddress = contacts.associateBy { it.address }
-                chats.map { chat ->
-                    val participants = handleDao.participantsFor(chat.guid)
-                    ChatListItem(
-                        guid = chat.guid,
-                        title = resolveChatTitle(chat, participants, contactsByAddress),
-                        isGroup = chat.style == GROUP_CHAT_STYLE,
-                        lastMessageDate = chat.lastMessageDate,
-                        lastMessagePreview = chat.lastMessagePreview,
-                        style = chat.style,
-                    )
-                }
+            handleDao.observeAllChatParticipants(),
+        ) { chats, contacts, participantRows ->
+            val contactsByAddress = contacts.associateBy { it.address }
+            val participantsByChat = participantRows
+                .groupBy({ it.chatGuid }) { HandleEntity(address = it.address, service = it.service) }
+            chats.map { chat ->
+                val participants = participantsByChat[chat.guid].orEmpty()
+                val isGroup = chat.style == GROUP_CHAT_STYLE
+                ChatListItem(
+                    guid = chat.guid,
+                    title = resolveChatTitle(chat, participants, contactsByAddress),
+                    isGroup = isGroup,
+                    lastMessageDate = chat.lastMessageDate,
+                    lastMessagePreview = chat.lastMessagePreview,
+                    style = chat.style,
+                    avatarPath = if (!isGroup) {
+                        participants.firstOrNull()
+                            ?.let { contactsByAddress[it.address]?.avatarPath }
+                    } else {
+                        null
+                    },
+                )
             }
+        }
 }

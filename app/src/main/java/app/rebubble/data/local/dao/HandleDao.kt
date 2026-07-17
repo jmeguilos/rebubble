@@ -6,6 +6,14 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import app.rebubble.data.local.entity.ChatHandleCrossRef
 import app.rebubble.data.local.entity.HandleEntity
+import kotlinx.coroutines.flow.Flow
+
+/** One row from [HandleDao.observeAllChatParticipants] — chat ↔ handle join. */
+data class ChatParticipantRow(
+    val chatGuid: String,
+    val address: String,
+    val service: String,
+)
 
 @Dao
 interface HandleDao {
@@ -24,4 +32,19 @@ interface HandleDao {
         """
     )
     suspend fun participantsFor(chatGuid: String): List<HandleEntity>
+
+    /**
+     * All chat↔handle joins in one query. Used by [app.rebubble.data.repo.ChatRepository] so the
+     * conversation list does not N+1 [participantsFor] per chat on every emission.
+     */
+    @Query(
+        """
+        SELECT chat_handles.chatGuid AS chatGuid,
+               handles.address AS address,
+               handles.service AS service
+        FROM chat_handles
+        INNER JOIN handles ON handles.address = chat_handles.address
+        """
+    )
+    fun observeAllChatParticipants(): Flow<List<ChatParticipantRow>>
 }

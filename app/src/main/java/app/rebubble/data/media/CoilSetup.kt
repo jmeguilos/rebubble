@@ -8,6 +8,7 @@ import coil3.request.Options
 import coil3.request.crossfade
 import dagger.Module
 import dagger.Provides
+import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
@@ -28,8 +29,8 @@ class AttachmentEntityMapper : Mapper<AttachmentEntity, File> {
 }
 
 /**
- * Hilt provider for the app [ImageLoader]. T18 wires this into Compose via
- * `LocalImageLoader` / `AsyncImage(imageLoader = …)` — nothing is registered on Application here.
+ * Hilt provider for the app [ImageLoader]. Compose screens resolve the singleton via
+ * [CoilImageLoaderEntryPoint] / `AsyncImage(imageLoader = …)`.
  *
  * Crossfade is enabled via Coil 3's Android `ImageLoader.Builder.crossfade` extension.
  * Downsampling is left to Coil's size resolvers (no manual full-bitmap decode).
@@ -51,4 +52,10 @@ object CoilSetup {
                 add(AttachmentEntityMapper())
             }
             .build()
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface CoilImageLoaderEntryPoint {
+    fun imageLoader(): ImageLoader
 }

@@ -2,6 +2,8 @@ package app.rebubble.data.repo
 
 import app.rebubble.data.local.InMemoryDatabaseFactory
 import app.rebubble.data.local.RebubbleDatabase
+import app.rebubble.data.local.dao.ChatParticipantRow
+import app.rebubble.data.local.dao.HandleDao
 import app.rebubble.data.local.entity.ChatEntity
 import app.rebubble.data.local.entity.ChatHandleCrossRef
 import app.rebubble.data.local.entity.ContactEntity
@@ -15,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -27,6 +30,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * [ChatRepository.observeChats] is the chat-list read path: title resolution fallbacks, group
@@ -141,9 +145,18 @@ class ChatRepositoryTest {
                 IngestSource.SOCKET,
             )
 
-            val second = emissions.next()
+            // Ingest may invalidate chats and chat_handles separately; wait for the preview bump.
+            val second = withTimeout(5_000) {
+                var latest: List<ChatListItem>
+                do {
+                    latest = emissions.next()
+                } while (
+                    latest.firstOrNull()?.guid != "chat-new" ||
+                        latest.first { it.guid == "chat-new" }.lastMessagePreview != "brand new"
+                )
+                latest
+            }
             assertEquals(listOf("chat-new", "chat-old"), second.map { it.guid })
-            assertEquals("brand new", second.first { it.guid == "chat-new" }.lastMessagePreview)
             assertEquals(200L, second.first { it.guid == "chat-new" }.lastMessageDate)
         }
     }
@@ -221,4 +234,126 @@ class ChatRepositoryTest {
             assertEquals("Carol", second.single().title)
         }
     }
+
+    // --- 5. N+1 fix: one join query, no per-chat participantsFor --------------------------------
+
+    /**
+     * Delegates to a real [HandleDao] while counting [HandleDao.participantsFor] calls so tests can
+     * prove [ChatRepository] no longer N+1s on every emission.
+     */
+    private class CountingHandleDao(
+        private val real: HandleDao,
+    ) : HandleDao by real {
+        val participantsForCalls = AtomicInteger(0)
+
+        override suspend fun participantsFor(chatGuid: String): List<HandleEntity> {
+            participantsForCalls.incrementAndGet()
+            return real.participantsFor(chatGuid)
+        }
+    }
+
+    @Test
+    fun `observeAllChatParticipants returns every chat-handle join in one call`() = runBlocking {
+        db.chatDao().upsert(
+            listOf(
+                chat("chat-a"),
+                chat("chat-b"),
+            )
+        )
+        seedParticipants("chat-a", "+15550000001", "+15550000002")
+        seedParticipants("chat-b", "+15550000003")
+
+        val rows = db.handleDao().observeAllChatParticipants().first()
+
+        assertEquals(
+            setOf(
+                ChatParticipantRow(chatGuid = "chat-a", address = "+15550000001", service = "iMessage"),
+                ChatParticipantRow(chatGuid = "chat-a", address = "+15550000002", service = "iMessage"),
+                ChatParticipantRow(chatGuid = "chat-b", address = "+15550000003", service = "iMessage"),
+            ),
+            rows.toSet(),
+        )
+    }
+
+    @Test
+    fun `observeChats does not call participantsFor per chat and keeps mixed title resolution`() =
+        runBlocking {
+            val counting = CountingHandleDao(db.handleDao())
+            val instrumentedRepo = ChatRepository(
+                chatDao = db.chatDao(),
+                handleDao = counting,
+                contactDao = db.contactDao(),
+            )
+            val addressA = "+15554440001"
+            val addressB = "+15554440002"
+            db.chatDao().upsert(listOf(chat("mixed", displayName = null, chatIdentifier = addressA)))
+            seedParticipants("mixed", addressA, addressB)
+            db.contactDao().upsert(
+                listOf(ContactEntity(address = addressA, displayName = "John", avatarPath = null))
+            )
+
+            collectEmissions(instrumentedRepo.observeChats()) { emissions ->
+                val item = emissions.next().single()
+                assertEquals("John, $addressB", item.title)
+                assertEquals(
+                    "participantsFor must not be used on the list path",
+                    0,
+                    counting.participantsForCalls.get(),
+                )
+            }
+        }
+
+    @Test
+    fun `with 200 chats one ingest emission does not issue 200 participantsFor queries`() =
+        runBlocking {
+            val counting = CountingHandleDao(db.handleDao())
+            val instrumentedRepo = ChatRepository(
+                chatDao = db.chatDao(),
+                handleDao = counting,
+                contactDao = db.contactDao(),
+            )
+
+            val chats = (1..200).map { i ->
+                chat(
+                    guid = "chat-$i",
+                    chatIdentifier = "+1555${i.toString().padStart(7, '0')}",
+                    lastMessageDate = i.toLong(),
+                    lastMessagePreview = "msg $i",
+                )
+            }
+            db.chatDao().upsert(chats)
+            for (i in 1..200) {
+                val address = "+1555${i.toString().padStart(7, '0')}"
+                seedParticipants("chat-$i", address)
+            }
+
+            collectEmissions(instrumentedRepo.observeChats()) { emissions ->
+                emissions.next() // initial
+                counting.participantsForCalls.set(0)
+
+                ingestor.ingest(
+                    listOf(
+                        MessageDto(
+                            guid = "m-latency",
+                            text = "bump",
+                            chats = listOf(
+                                ChatDto(guid = "chat-1", style = 45, chatIdentifier = "+15550000001"),
+                            ),
+                            isFromMe = false,
+                            dateCreated = 10_000L,
+                            handle = HandleDto(address = "+15550000001", service = "iMessage"),
+                        )
+                    ),
+                    IngestSource.SOCKET,
+                )
+
+                val after = emissions.next()
+                assertEquals("chat-1", after.first().guid)
+                assertEquals(
+                    "one ingest must not N+1 participantsFor across 200 chats",
+                    0,
+                    counting.participantsForCalls.get(),
+                )
+            }
+        }
 }
