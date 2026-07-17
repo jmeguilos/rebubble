@@ -18,9 +18,12 @@ import app.rebubble.data.local.entity.HandleEntity
 import app.rebubble.data.local.entity.MessageEntity
 import app.rebubble.data.local.entity.SendStatus
 import app.rebubble.data.outbox.OutboxRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -34,6 +37,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.util.Collections
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * T15 notification pipeline: MessagingStyle from Room, active-chat suppression, group title,
@@ -69,6 +74,8 @@ class MessageNotifierTest {
         notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancelAll()
+        notifier.dedupeRaceGate = null
+        notifier.notificationPostedListener = null
 
         outbox = OutboxRepository(
             context = context,
@@ -255,6 +262,65 @@ class MessageNotifierTest {
     }
 
     @Test
+    fun `concurrent onNewMessages for same chat posts at most one alerting notification`() = runBlocking {
+        seedDm()
+        db.messageDao().insertAll(
+            listOf(message("m1", CHAT_GUID, "race", dateCreated = 1_000L)),
+        )
+
+        val chatPosts = Collections.synchronizedList(mutableListOf<Notification>())
+        notifier.notificationPostedListener = { id, notification ->
+            if (id == CHAT_GUID.hashCode()) chatPosts.add(notification)
+        }
+
+        val entered = AtomicInteger(0)
+        val bothEntered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        notifier.dedupeRaceGate = {
+            if (entered.incrementAndGet() == 2) bothEntered.complete(Unit)
+            release.await()
+        }
+
+        coroutineScope {
+            val a = async(Dispatchers.Default) { notifier.onNewMessages(listOf("m1")) }
+            val b = async(Dispatchers.Default) { notifier.onNewMessages(listOf("m1")) }
+            bothEntered.await()
+            release.complete(Unit)
+            a.await()
+            b.await()
+        }
+
+        val alerting = chatPosts.count { it.flags and Notification.FLAG_ONLY_ALERT_ONCE == 0 }
+        assertEquals(
+            "concurrent same-watermark posts must alert at most once, got ${chatPosts.size} posts",
+            1,
+            alerting,
+        )
+    }
+
+    @Test
+    fun `two-chat batch posts summary once with onlyAlertOnce`() = runBlocking {
+        seedDm(CHAT_GUID)
+        seedDm(CHAT_GUID_B)
+        db.messageDao().insertAll(
+            listOf(
+                message("m1", CHAT_GUID, "from a", dateCreated = 1_000L),
+                message("m2", CHAT_GUID_B, "from b", dateCreated = 2_000L),
+            ),
+        )
+
+        val summaryPosts = Collections.synchronizedList(mutableListOf<Notification>())
+        notifier.notificationPostedListener = { id, notification ->
+            if (id == MessageNotifier.SUMMARY_NOTIFICATION_ID) summaryPosts.add(notification)
+        }
+
+        notifier.onNewMessages(listOf("m1", "m2"))
+
+        assertEquals(1, summaryPosts.size)
+        assertTrue(summaryPosts.single().flags and Notification.FLAG_ONLY_ALERT_ONCE != 0)
+    }
+
+    @Test
     fun `ReplyReceiver sendText and reposts notification containing reply`() = runBlocking {
         seedDm()
         db.messageDao().insertAll(
@@ -295,5 +361,6 @@ class MessageNotifierTest {
 
     private companion object {
         const val CHAT_GUID = "chat-1"
+        const val CHAT_GUID_B = "chat-2"
     }
 }

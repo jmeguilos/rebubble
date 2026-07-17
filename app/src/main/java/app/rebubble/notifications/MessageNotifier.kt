@@ -49,6 +49,16 @@ class MessageNotifier @Inject constructor(
     /** Per-chat max dateCreated we have already alerted on (process lifetime). */
     private val lastNotifiedMaxDate = ConcurrentHashMap<String, Long>()
 
+    /**
+     * Test-only: invoked after the atomic watermark decision and before posting, so concurrent
+     * callers can be held until both have decided. Null in production.
+     */
+    internal var dedupeRaceGate: (suspend () -> Unit)? = null
+
+    /** Test-only: observes every [NotificationManagerCompat.notify] call. Null in production. */
+    internal var notificationPostedListener: ((id: Int, notification: android.app.Notification) -> Unit)? =
+        null
+
     override suspend fun onNewMessages(guids: List<String>) {
         if (guids.isEmpty()) return
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
@@ -60,15 +70,23 @@ class MessageNotifier @Inject constructor(
         val active = activeChatTracker.current.value
         val byChat = incoming.groupBy { it.chatGuid }
 
+        var postedAny = false
         for ((chatGuid, chatIncoming) in byChat) {
             if (chatGuid == active) continue
             val maxIncoming = chatIncoming.maxOf { it.dateCreated }
-            val previous = lastNotifiedMaxDate[chatGuid]
-            val onlyAlertOnce = previous != null && maxIncoming <= previous
-            postChatNotification(chatGuid, onlyAlertOnce = onlyAlertOnce)
-            if (!onlyAlertOnce) {
-                lastNotifiedMaxDate[chatGuid] = maxIncoming
+            var onlyAlertOnce = false
+            // Atomic read-decide-write so concurrent FCM + reconcile cannot both alert.
+            lastNotifiedMaxDate.compute(chatGuid) { _, previous ->
+                onlyAlertOnce = previous != null && maxIncoming <= previous
+                if (onlyAlertOnce) previous else maxIncoming
             }
+            dedupeRaceGate?.invoke()
+            if (postChatNotification(chatGuid, onlyAlertOnce = onlyAlertOnce)) {
+                postedAny = true
+            }
+        }
+        if (postedAny) {
+            postSummaryNotification()
         }
     }
 
@@ -78,13 +96,15 @@ class MessageNotifier @Inject constructor(
      */
     suspend fun repostIncludingReply(chatGuid: String) {
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
-        postChatNotification(chatGuid, onlyAlertOnce = true)
+        if (postChatNotification(chatGuid, onlyAlertOnce = true)) {
+            postSummaryNotification()
+        }
     }
 
-    private suspend fun postChatNotification(chatGuid: String, onlyAlertOnce: Boolean) {
-        val chat = chatDao.getByGuid(chatGuid) ?: return
+    private suspend fun postChatNotification(chatGuid: String, onlyAlertOnce: Boolean): Boolean {
+        val chat = chatDao.getByGuid(chatGuid) ?: return false
         val history = messageDao.getRecentNonReaction(chatGuid, HISTORY_LIMIT)
-        if (history.isEmpty()) return
+        if (history.isEmpty()) return false
 
         val contactsByAddress = contactDao.getAll().associateBy { it.address }
         val participants = handleDao.participantsFor(chatGuid)
@@ -144,12 +164,15 @@ class MessageNotifier @Inject constructor(
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .build()
 
-        try {
-            NotificationManagerCompat.from(context).notify(chatGuid.hashCode(), notification)
-            postSummaryNotification()
+        return try {
+            val id = chatGuid.hashCode()
+            NotificationManagerCompat.from(context).notify(id, notification)
+            notificationPostedListener?.invoke(id, notification)
+            true
         } catch (e: SecurityException) {
             // POST_NOTIFICATIONS denied on API 33+ — areNotificationsEnabled should catch most cases.
             Log.w(LOG_TAG, "notify failed for chat=$chatGuid", e)
+            false
         }
     }
 
@@ -164,10 +187,12 @@ class MessageNotifier @Inject constructor(
             )
             .setGroup(NotificationChannels.GROUP_KEY)
             .setGroupSummary(true)
+            .setOnlyAlertOnce(true)
             .setAutoCancel(true)
             .build()
         try {
             NotificationManagerCompat.from(context).notify(SUMMARY_NOTIFICATION_ID, summary)
+            notificationPostedListener?.invoke(SUMMARY_NOTIFICATION_ID, summary)
         } catch (e: SecurityException) {
             Log.w(LOG_TAG, "summary notify failed", e)
         }
@@ -204,6 +229,6 @@ class MessageNotifier @Inject constructor(
         private const val ATTACHMENT_PLACEHOLDER = "Attachment"
         private const val SUMMARY_TITLE = "Rebubble"
         private const val SUMMARY_TEXT = "Messages"
-        private const val SUMMARY_NOTIFICATION_ID = 0x52424C45 // "RBLE"
+        const val SUMMARY_NOTIFICATION_ID = 0x52424C45 // "RBLE"
     }
 }
