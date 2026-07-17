@@ -89,6 +89,11 @@ dependencies {
 
     implementation(libs.coil.compose)
 
+    // Runtime-initialized FCM (no google-services plugin / no compile-time google-services.json).
+    implementation(libs.firebase.messaging)
+    implementation(libs.play.services.base)
+    implementation(libs.kotlinx.coroutines.play.services)
+
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)
