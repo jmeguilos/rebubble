@@ -26,6 +26,7 @@ class SentMessageDecodeTest {
         assertEquals("Message sent!", envelope.message)
 
         val message = requireNotNull(envelope.data)
+        assertEquals(601L, message.originalRowId)
         assertEquals("temp-3f1a9c2e-4b7d-4e11-9f0a-1234567890ab", message.tempGuid)
         assertEquals("p:0/A1B2C3D4-0000-0000-0000-000000000601", message.guid)
         assertTrue(message.isFromMe)

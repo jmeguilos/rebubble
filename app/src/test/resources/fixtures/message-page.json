@@ -68,7 +68,7 @@
       "groupTitle": null,
       "groupActionType": 0,
       "associatedMessageGuid": "p:0/A1B2C3D4-0000-0000-0000-000000000001",
-      "associatedMessageType": "2000",
+      "associatedMessageType": "love",
       "threadOriginatorGuid": null,
       "threadOriginatorPart": null,
       "expressiveSendStyleId": null,
@@ -97,7 +97,7 @@
           "totalBytes": 2481932,
           "height": 3024,
           "width": 4032,
-          "hasLivePhoto": false
+          "hasLivePhoto": true
         }
       ],
       "itemType": 0,

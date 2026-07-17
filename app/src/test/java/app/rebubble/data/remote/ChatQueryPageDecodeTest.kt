@@ -29,18 +29,23 @@ class ChatQueryPageDecodeTest {
         assertEquals(2, chats.size)
 
         val dm = chats[0]
+        assertEquals(12L, dm.originalRowId)
         assertEquals("iMessage;-;+15551234567", dm.guid)
         assertEquals(45, dm.style)
         assertEquals("+15551234567", dm.chatIdentifier)
         assertNull(dm.displayName)
         assertEquals(1, dm.participants.size)
+        assertEquals(3L, dm.participants[0].originalRowId)
         assertEquals("+15551234567", dm.participants[0].address)
         assertEquals("iMessage", dm.participants[0].service)
 
         val group = chats[1]
+        assertEquals(13L, group.originalRowId)
         assertEquals(43, group.style)
         assertEquals("Weekend Trip", group.displayName)
         assertEquals(2, group.participants.size)
+        assertEquals(4L, group.participants[0].originalRowId)
+        assertEquals(5L, group.participants[1].originalRowId)
 
         // Pagination metadata: {offset, limit, total, count}
         val metadata = requireNotNull(envelope.metadata)

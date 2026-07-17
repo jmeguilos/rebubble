@@ -48,18 +48,21 @@ class MessagePageDecodeTest {
         val reaction = messages[2]
         assertNull(reaction.text)
         assertEquals("p:0/A1B2C3D4-0000-0000-0000-000000000001", reaction.associatedMessageGuid)
-        assertEquals("2000", reaction.associatedMessageType)
+        assertEquals("love", reaction.associatedMessageType)
         assertTrue(reaction.isFromMe)
+        assertEquals(503L, reaction.originalRowId)
 
         // Attachment message.
         val withAttachment = messages[3]
+        assertEquals(504L, withAttachment.originalRowId)
         assertEquals(1, withAttachment.attachments.size)
         val attachment = withAttachment.attachments[0]
+        assertEquals(88L, attachment.originalRowId)
         assertEquals("image/jpeg", attachment.mimeType)
         assertEquals(2481932L, attachment.totalBytes)
         assertEquals(3024, attachment.height)
         assertEquals(4032, attachment.width)
-        assertFalse(attachment.hasLivePhoto)
+        assertTrue(attachment.hasLivePhoto)
 
         // Pagination metadata: {offset, limit, total, count}
         val metadata = requireNotNull(envelope.metadata)
