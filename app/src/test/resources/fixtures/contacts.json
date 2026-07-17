@@ -1,0 +1,39 @@
+{
+  "_source": "contactInterface.ts extractEmails() lines 16-30, extractPhoneNumbers() lines 32-46, mapContacts() lines 82-93 -- packages/server/src/server/api/interfaces/contactInterface.ts (phoneNumbers/emails as {address,id} objects; top-level id = contact?.identifier ?? contact?.id, a DB-numeric TypeORM primary key or an API string)",
+  "status": 200,
+  "message": "Success",
+  "data": [
+    {
+      "id": 7,
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "displayName": "Ada Lovelace",
+      "nickname": null,
+      "birthday": null,
+      "avatar": "",
+      "sourceType": "db",
+      "phoneNumbers": [
+        { "address": "+15551234567", "id": 101 }
+      ],
+      "emails": [
+        { "address": "ada@example.com", "id": 202 }
+      ]
+    },
+    {
+      "id": "contact-guid-99",
+      "firstName": "Grace",
+      "lastName": "Hopper",
+      "displayName": "Grace Hopper",
+      "nickname": "Amazing Grace",
+      "birthday": "1906-12-09",
+      "avatar": "",
+      "sourceType": "api",
+      "phoneNumbers": [
+        { "address": "+15557654321", "id": "api-addr-1" }
+      ],
+      "emails": [
+        { "address": "grace@example.com", "id": "api-addr-2" }
+      ]
+    }
+  ]
+}

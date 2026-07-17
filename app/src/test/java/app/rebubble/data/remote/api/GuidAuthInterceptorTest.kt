@@ -2,6 +2,8 @@ package app.rebubble.data.remote.api
 
 import app.rebubble.data.remote.dto.requests.ChatQueryRequest
 import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -53,5 +55,25 @@ class GuidAuthInterceptorTest {
 
         assertEquals("s3cret", first.requestUrl?.queryParameter("guid"))
         assertEquals("s3cret", second.requestUrl?.queryParameter("guid"))
+    }
+
+    @Test
+    fun `a pre-existing guid query parameter is overwritten, not duplicated`() {
+        server.enqueue(MockResponse().setResponseCode(200))
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(GuidAuthInterceptor(credentials))
+            .build()
+
+        val staleUrl = server.url("/api/v1/server/info").newBuilder()
+            .addQueryParameter("guid", "stale")
+            .build()
+
+        client.newCall(Request.Builder().url(staleUrl).build()).execute().close()
+
+        val recorded = server.takeRequest()
+        val guidValues = recorded.requestUrl?.queryParameterValues("guid")
+
+        assertEquals(listOf("s3cret"), guidValues)
     }
 }

@@ -6,8 +6,8 @@ import okhttp3.Response
 import java.io.IOException
 
 /**
- * Appends the BlueBubbles server's required `?guid=<password>` query parameter to every
- * outgoing request.
+ * Sets the BlueBubbles server's required `guid=<password>` query parameter on every outgoing
+ * request, overwriting any existing `guid` value rather than appending a duplicate.
  *
  * If no password is configured yet (e.g. before onboarding completes), the request is sent
  * unmodified rather than crashing the interceptor chain — the server will reject it (401), which
@@ -21,7 +21,7 @@ class GuidAuthInterceptor(
         val password = credentials.password() ?: return chain.proceed(original)
 
         val newUrl = original.url.newBuilder()
-            .addQueryParameter("guid", password)
+            .setQueryParameter("guid", password)
             .build()
 
         return chain.proceed(original.newBuilder().url(newUrl).build())

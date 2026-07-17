@@ -1,11 +1,14 @@
 package app.rebubble.data.remote.api
 
 import app.rebubble.data.remote.dto.ServerInfoDto
+import app.rebubble.data.remote.dto.requests.FcmDeviceRequest
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
@@ -13,8 +16,10 @@ import java.io.IOException
 
 /**
  * Verifies [apiCall]'s error mapping: envelope unwrap on success, typed [ApiException] for
- * non-2xx responses with a parseable error envelope, typed [AuthError] for 401, and IOException
- * passthrough for network failures.
+ * non-2xx responses with a parseable error envelope, typed [AuthError] for 401, IOException
+ * passthrough for network failures, typed [ApiException] for a non-2xx response whose body isn't
+ * parseable JSON at all, and typed [ApiException] (vs. [apiCallNullable] succeeding) when a 2xx
+ * envelope's `data` is null.
  */
 class ApiResultTest {
 
@@ -68,6 +73,49 @@ class ApiResultTest {
         assertEquals(400, exception.status)
         assertEquals("Validation Error", exception.errorType)
         assertEquals("No chat GUID provided", exception.errorMessage)
+    }
+
+    @Test
+    fun `non-2xx with an unparseable body still becomes a typed ApiException, not a SerializationException`() {
+        server.enqueue(
+            MockResponse().setResponseCode(500).setBody("<html>gateway</html>")
+        )
+
+        val exception = assertThrows(ApiException::class.java) {
+            runBlocking { apiCall<ServerInfoDto> { api.serverInfo() } }
+        }
+
+        assertEquals(500, exception.status)
+        assertNull(exception.errorType)
+    }
+
+    @Test
+    fun `2xx envelope with null data throws a typed ApiException from apiCall`() {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"status":200,"message":"Success"}"""
+            )
+        )
+
+        val exception = assertThrows(ApiException::class.java) {
+            runBlocking { apiCall<JsonObject> { api.fcmClient() } }
+        }
+
+        assertEquals(200, exception.status)
+        assertEquals("Empty Data", exception.errorType)
+    }
+
+    @Test
+    fun `2xx envelope with null data succeeds via apiCallNullable`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"status":200,"message":"Success"}"""
+            )
+        )
+
+        val result = apiCallNullable { api.addFcmDevice(FcmDeviceRequest(name = "n", identifier = "i")) }
+
+        assertNull(result)
     }
 
     @Test
