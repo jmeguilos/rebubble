@@ -1,1 +1,27 @@
 .superpowers/
+
+# Gradle
+.gradle/
+build/
+app/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.DS_Store
+
+# Signing
+*.keystore
+*.jks
+
+# Captures/logs
+captures/
+.cxx/
+*.log
+
+# Native / NDK
+.externalNativeBuild/
