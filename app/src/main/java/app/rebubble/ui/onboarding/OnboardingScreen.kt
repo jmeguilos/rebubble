@@ -37,7 +37,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -143,6 +146,21 @@ fun OnboardingScreen(
     ) {
         AnimatedContent(
             targetState = state,
+            contentKey = { screen ->
+                when (screen) {
+                    OnboardingUiState.Welcome,
+                    is OnboardingUiState.QrError,
+                    -> "welcome"
+                    is OnboardingUiState.ManualEntry -> "manual"
+                    OnboardingUiState.Validating -> "validating"
+                    is OnboardingUiState.PasswordError,
+                    is OnboardingUiState.Unreachable,
+                    -> "connect_error"
+                    OnboardingUiState.Syncing -> "syncing"
+                    is OnboardingUiState.SyncError -> "sync_error"
+                    is OnboardingUiState.Done -> "done"
+                }
+            },
             transitionSpec = {
                 val fadeSpec = spring<Float>(
                     dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -299,6 +317,13 @@ private fun ManualPane(
     onConnect: () -> Unit,
     onBack: () -> Unit,
 ) {
+    // Text fields must own synchronous local state — binding value to a StateFlow
+    // drops/reorders keystrokes under fast input / UIAutomator (Compose async text bug).
+    // Seed once per ManualEntry visit; leaving the pane disposes this composition so a
+    // later re-entry (QR prefill / showManualEntry) reseeds from uiState.
+    var url by rememberSaveable { mutableStateOf(state.url) }
+    var password by rememberSaveable { mutableStateOf(state.password) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -312,8 +337,11 @@ private fun ManualPane(
         )
         VerticalSpace(20.dp)
         OutlinedTextField(
-            value = state.url,
-            onValueChange = onUrlChange,
+            value = url,
+            onValueChange = {
+                url = it
+                onUrlChange(it)
+            },
             modifier = Modifier.fillMaxWidth(),
             label = { Text(OnboardingCopy.URL_LABEL) },
             singleLine = true,
@@ -322,8 +350,11 @@ private fun ManualPane(
         )
         VerticalSpace(12.dp)
         OutlinedTextField(
-            value = state.password,
-            onValueChange = onPasswordChange,
+            value = password,
+            onValueChange = {
+                password = it
+                onPasswordChange(it)
+            },
             modifier = Modifier.fillMaxWidth(),
             label = { Text(OnboardingCopy.PASSWORD_LABEL) },
             singleLine = true,
@@ -342,7 +373,7 @@ private fun ManualPane(
         VerticalSpace(24.dp)
         Button(
             onClick = onConnect,
-            enabled = !state.isSubmitting && state.url.isNotBlank() && state.password.isNotBlank(),
+            enabled = !state.isSubmitting && url.isNotBlank() && password.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(OnboardingCopy.CONNECT)
