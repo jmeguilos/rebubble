@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.ListenableWorker
+import androidx.work.NetworkType
+import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
@@ -224,8 +226,13 @@ class OutboxSendTextTest {
         assertEquals(TEXT, chat?.lastMessagePreview)
         assertEquals(row.dateCreated, chat?.lastMessageDate)
 
-        // Network constraint keeps the worker from running under WorkManagerTestInitHelper
-        // until TestDriver marks constraints met — so the row is still SENDING with 0 requests.
+        // No NetworkType.CONNECTED — LAN-only servers must still enqueue. Under the default
+        // test WorkerFactory, Hilt workers are not creatable, so no POST fires here.
+        val workInfos = WorkManager.getInstance(context)
+            .getWorkInfosForUniqueWork(tempGuid)
+            .get(5, TimeUnit.SECONDS)
+        assertTrue(workInfos.isNotEmpty())
+        assertEquals(NetworkType.NOT_REQUIRED, workInfos[0].constraints.requiredNetworkType)
         assertEquals(0, server.requestCount)
     }
 
@@ -394,10 +401,11 @@ class OutboxSendTextTest {
         outbox.retry(tempGuid)
 
         assertEquals(SendStatus.SENDING, db.messageDao().getByGuid(tempGuid)?.sendStatus)
-        val workInfos = androidx.work.WorkManager.getInstance(context)
+        val workInfos = WorkManager.getInstance(context)
             .getWorkInfosForUniqueWork(tempGuid)
             .get(5, TimeUnit.SECONDS)
         assertTrue(workInfos.isNotEmpty())
+        assertEquals(NetworkType.NOT_REQUIRED, workInfos[0].constraints.requiredNetworkType)
 
         // Non-FAILED (SENDING) → no-op: status unchanged.
         val before = db.messageDao().getByGuid(tempGuid)!!

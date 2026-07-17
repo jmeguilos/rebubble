@@ -4,9 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.work.BackoffPolicy
-import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
@@ -211,11 +209,10 @@ open class OutboxRepository @Inject constructor(
                 ),
             )
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build(),
-            )
+            // No NetworkType.CONNECTED: Android treats isolated LAN (failed captive-portal) as
+            // "connected, no internet", which would starve sends — a core BlueBubbles use case.
+            // Attempts without any network fail fast with ConnectException → classified
+            // provably-unsent → WorkManager retries with backoff ([OutboxRetryPolicy]).
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(tempGuid, policy, request)
     }
@@ -239,11 +236,9 @@ open class OutboxRepository @Inject constructor(
         val request = OneTimeWorkRequestBuilder<SendAttachmentWorker>()
             .setInputData(dataBuilder.build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build(),
-            )
+            // No NetworkType.CONNECTED: same LAN-only rationale as [enqueueSendText] — correctness
+            // for local BlueBubbles servers beats the battery micro-optimization of waiting for
+            // validated internet; ConnectException → provably-unsent → backoff retry.
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(tempGuid, policy, request)
     }

@@ -55,6 +55,9 @@ val OwnIMessageBubble = Color(0xFF0B84FE)
 /** SMS own-bubble green (chat.guid starts with `SMS;`). */
 val OwnSmsBubble = Color(0xFF34C759)
 
+/** Own bubbles still in-flight ([SendStatus.SENDING]) render at reduced emphasis vs SENT. */
+internal const val SendingBubbleAlpha = 0.65f
+
 private val BubbleOuterRadius = 20.dp
 private val BubbleInnerRadius = 4.dp
 private val TailWidth = 8.dp
@@ -127,7 +130,10 @@ fun MessageBubble(
                 bottom = if (item.isLastInRun) 6.dp else 2.dp,
             )
             .graphicsLayer {
-                this.alpha = alpha.value
+                // SENDING own bubbles stay visually quieter than SENT (no text label).
+                val sendingDim =
+                    if (fromMe && item.isSending) SendingBubbleAlpha else 1f
+                this.alpha = alpha.value * sendingDim
                 scaleX = scale.value
                 scaleY = scale.value
             },
@@ -359,6 +365,31 @@ private fun VariantsPreview() {
                 animateSendPop = false,
             )
         }
+    }
+}
+
+@Preview(showBackground = true, name = "SENDING own bubble")
+@Composable
+private fun SendingOwnPreview() {
+    val ctx = LocalPlatformContext.current
+    RebubbleTheme(dynamicColor = false) {
+        MessageBubble(
+            item = previewBubble(
+                "temp-deadbeef",
+                "Still sending…",
+                first = true,
+                last = true,
+                tail = true,
+                status = SendStatus.SENDING,
+            ),
+            isSms = false,
+            selected = false,
+            onLongPress = {},
+            onRetry = {},
+            onDownloadAttachment = {},
+            imageLoader = ImageLoader.Builder(ctx).build(),
+            animateSendPop = false,
+        )
     }
 }
 

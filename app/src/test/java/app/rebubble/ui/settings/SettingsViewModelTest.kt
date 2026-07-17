@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.test.core.app.ApplicationProvider
+import androidx.work.NetworkType
 import androidx.work.WorkManager
 import androidx.work.testing.WorkManagerTestInitHelper
 import app.rebubble.data.logging.RingBufferLogger
@@ -182,6 +183,11 @@ class SettingsViewModelTest {
             .getWorkInfosForUniqueWork(SyncScheduling.UNIQUE_EXPEDITED)
             .get()
         assertTrue(infos.isNotEmpty())
-        assertTrue(infos.any { !it.state.isFinished })
+        // No NetworkType.CONNECTED — work may finish immediately under SynchronousExecutor
+        // (Hilt SyncWorker isn't creatable here); enqueue itself is the contract under test.
+        assertEquals(
+            NetworkType.NOT_REQUIRED,
+            infos[0].constraints.requiredNetworkType,
+        )
     }
 }

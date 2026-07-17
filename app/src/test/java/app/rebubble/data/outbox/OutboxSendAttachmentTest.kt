@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.ListenableWorker
+import androidx.work.NetworkType
+import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
@@ -271,7 +273,13 @@ class OutboxSendAttachmentTest {
         assertEquals(OutboxRepository.ATTACHMENT_PREVIEW, chat?.lastMessagePreview)
         assertEquals(row.dateCreated, chat?.lastMessageDate)
 
-        // Network constraint keeps the worker from running under WorkManagerTestInitHelper.
+        // No NetworkType.CONNECTED — LAN-only servers must still enqueue. Under the default
+        // test WorkerFactory, Hilt workers are not creatable, so no POST fires here.
+        val workInfos = WorkManager.getInstance(context)
+            .getWorkInfosForUniqueWork(tempGuid)
+            .get(5, TimeUnit.SECONDS)
+        assertTrue(workInfos.isNotEmpty())
+        assertEquals(NetworkType.NOT_REQUIRED, workInfos[0].constraints.requiredNetworkType)
         assertEquals(0, server.requestCount)
     }
 
@@ -430,15 +438,16 @@ class OutboxSendAttachmentTest {
         db.messageDao().update(row.copy(sendStatus = SendStatus.FAILED))
 
         // Clear any KEEP-enqueued work from sendAttachment so REPLACE is observable.
-        androidx.work.WorkManager.getInstance(context).cancelUniqueWork(tempGuid)
+        WorkManager.getInstance(context).cancelUniqueWork(tempGuid)
 
         outbox.retry(tempGuid)
 
         assertEquals(SendStatus.SENDING, db.messageDao().getByGuid(tempGuid)?.sendStatus)
-        val workInfos = androidx.work.WorkManager.getInstance(context)
+        val workInfos = WorkManager.getInstance(context)
             .getWorkInfosForUniqueWork(tempGuid)
             .get(5, TimeUnit.SECONDS)
         assertTrue(workInfos.isNotEmpty())
+        assertEquals(NetworkType.NOT_REQUIRED, workInfos[0].constraints.requiredNetworkType)
         assertTrue(
             "expected SendAttachmentWorker tag",
             workInfos.any { it.tags.contains(SendAttachmentWorker::class.java.name) },
