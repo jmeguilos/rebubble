@@ -99,6 +99,7 @@ class OutboxSendTextTest {
             context = context,
             messageDao = db.messageDao(),
             chatDao = db.chatDao(),
+            attachmentDao = db.attachmentDao(),
         )
     }
 

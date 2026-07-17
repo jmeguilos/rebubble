@@ -58,7 +58,7 @@ interface BlueBubblesApi {
     @POST("message/attachment")
     suspend fun sendAttachment(
         @Part file: MultipartBody.Part,
-        @PartMap fields: Map<String, RequestBody>
+        @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>
     ): Envelope<MessageDto>
 
     @GET("fcm/client")

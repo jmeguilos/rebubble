@@ -31,4 +31,10 @@ interface AttachmentDao {
 
     @Query("SELECT * FROM attachments WHERE messageGuid = :messageGuid")
     fun observeForMessage(messageGuid: String): Flow<List<AttachmentEntity>>
+
+    @Query("SELECT * FROM attachments WHERE messageGuid = :messageGuid")
+    suspend fun getForMessage(messageGuid: String): List<AttachmentEntity>
+
+    @Query("DELETE FROM attachments WHERE guid = :guid")
+    suspend fun deleteByGuid(guid: String)
 }
