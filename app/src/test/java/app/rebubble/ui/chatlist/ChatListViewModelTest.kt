@@ -9,6 +9,7 @@ import app.rebubble.data.local.entity.HandleEntity
 import app.rebubble.data.repo.ChatRepository
 import app.rebubble.data.sync.SyncOutcome
 import app.rebubble.data.sync.SyncStatus
+import app.rebubble.data.logging.RingBufferLogger;
 import app.rebubble.data.sync.SyncStatusTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -44,7 +45,7 @@ class ChatListViewModelTest {
             handleDao = db.handleDao(),
             contactDao = db.contactDao(),
         )
-        tracker = SyncStatusTracker()
+        tracker = SyncStatusTracker(RingBufferLogger())
     }
 
     @After

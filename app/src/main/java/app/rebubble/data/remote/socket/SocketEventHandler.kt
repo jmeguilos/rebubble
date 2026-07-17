@@ -1,6 +1,7 @@
 package app.rebubble.data.remote.socket
 
 import android.util.Log
+import app.rebubble.data.logging.RingBufferLogger
 import app.rebubble.data.sync.IngestSource
 import app.rebubble.data.sync.MessageIngestor
 import kotlinx.coroutines.CoroutineScope
@@ -34,6 +35,7 @@ class SocketEventHandler @Inject constructor(
     private val socketClient: SocketClient,
     private val ingestor: MessageIngestor,
     private val onReconnect: SocketReconnectAction,
+    private val logger: RingBufferLogger,
     @param:Named("socket") private val scope: CoroutineScope,
 ) {
     @Volatile
@@ -103,6 +105,7 @@ class SocketEventHandler @Inject constructor(
             throw e
         } catch (e: Exception) {
             Log.e(LOG_TAG, "failed to handle socket event=$event", e)
+            logger.log(LOG_TAG, "poison event: ${e.message}")
         }
     }
 

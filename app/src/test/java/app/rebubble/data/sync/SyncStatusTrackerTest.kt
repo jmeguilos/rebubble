@@ -1,5 +1,6 @@
 package app.rebubble.data.sync
 
+import app.rebubble.data.logging.RingBufferLogger;
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +29,7 @@ class SyncStatusTrackerTest {
 
     @Test
     fun `track transitions Idle to Syncing to Idle on success`() = runBlocking {
-        val tracker = SyncStatusTracker()
+        val tracker = SyncStatusTracker(RingBufferLogger())
         collectEmissions(tracker.status) { emissions ->
             assertEquals(SyncStatus.Idle, emissions.next())
 
@@ -49,7 +50,7 @@ class SyncStatusTrackerTest {
 
     @Test
     fun `track transitions to Error with message then Idle on next success`() = runBlocking {
-        val tracker = SyncStatusTracker()
+        val tracker = SyncStatusTracker(RingBufferLogger())
         collectEmissions(tracker.status) { emissions ->
             assertEquals(SyncStatus.Idle, emissions.next())
 
@@ -85,7 +86,7 @@ class SyncStatusTrackerTest {
 
     @Test
     fun `overlapping tracks stay Syncing until last completes`() = runBlocking {
-        val tracker = SyncStatusTracker()
+        val tracker = SyncStatusTracker(RingBufferLogger())
         collectEmissions(tracker.status) { emissions ->
             assertEquals(SyncStatus.Idle, emissions.next())
 
@@ -124,7 +125,7 @@ class SyncStatusTrackerTest {
     fun `overlapping error then later success drains to Idle`() = runBlocking {
         // Drain rule: lastError is recorded while count>0; on count→0 surface Error(lastError)
         // unless a later call succeeded (success clears lastError) → Idle.
-        val tracker = SyncStatusTracker()
+        val tracker = SyncStatusTracker(RingBufferLogger())
         collectEmissions(tracker.status) { emissions ->
             assertEquals(SyncStatus.Idle, emissions.next())
 
@@ -160,7 +161,7 @@ class SyncStatusTrackerTest {
 
     @Test
     fun `throwing block ends Error and propagates`() = runBlocking {
-        val tracker = SyncStatusTracker()
+        val tracker = SyncStatusTracker(RingBufferLogger())
         collectEmissions(tracker.status) { emissions ->
             assertEquals(SyncStatus.Idle, emissions.next())
 
@@ -191,7 +192,7 @@ class SyncStatusTrackerTest {
 
     @Test
     fun `concurrent tracks never Idle or Error while body running`() = runBlocking {
-        val tracker = SyncStatusTracker()
+        val tracker = SyncStatusTracker(RingBufferLogger())
         val runningBodies = AtomicInteger(0)
         val violations = AtomicInteger(0)
         val n = 200

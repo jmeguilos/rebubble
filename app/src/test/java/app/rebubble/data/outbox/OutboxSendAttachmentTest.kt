@@ -12,6 +12,8 @@ import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
 import app.rebubble.data.local.InMemoryDatabaseFactory
+import app.rebubble.data.logging.RingBufferLogger
+import app.rebubble.notifications.SendFailureNotifier
 import app.rebubble.data.local.RebubbleDatabase
 import app.rebubble.data.local.entity.ChatEntity
 import app.rebubble.data.local.entity.DownloadState
@@ -174,6 +176,8 @@ class OutboxSendAttachmentTest {
                         db.attachmentDao(),
                         ingestor,
                         serverConfig,
+                        SendFailureNotifier(appContext),
+                        RingBufferLogger(),
                     )
                 },
             )

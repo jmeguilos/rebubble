@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import app.rebubble.data.local.dao.MessageDao
 import app.rebubble.data.local.entity.SendStatus
+import app.rebubble.data.logging.RingBufferLogger
 import app.rebubble.data.remote.api.ApiException
 import app.rebubble.data.remote.api.AuthError
 import app.rebubble.data.remote.api.BlueBubblesApi
@@ -14,6 +15,7 @@ import app.rebubble.data.remote.dto.requests.SendTextRequest
 import app.rebubble.data.repo.ServerConfigRepository
 import app.rebubble.data.sync.IngestSource
 import app.rebubble.data.sync.MessageIngestor
+import app.rebubble.notifications.SendFailureNotifier
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
@@ -48,6 +50,8 @@ class SendTextWorker @AssistedInject constructor(
     private val messageDao: MessageDao,
     private val ingestor: MessageIngestor,
     private val serverConfigRepository: ServerConfigRepository,
+    private val sendFailureNotifier: SendFailureNotifier,
+    private val logger: RingBufferLogger,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -129,6 +133,8 @@ class SendTextWorker @AssistedInject constructor(
     private suspend fun markFailed(tempGuid: String) {
         val row = messageDao.getByGuid(tempGuid) ?: return
         messageDao.update(row.copy(sendStatus = SendStatus.FAILED))
+        logger.log("SendTextWorker", "send FAILED tempGuid=$tempGuid chatGuid=${row.chatGuid}")
+        sendFailureNotifier.notifySendFailed(row.chatGuid)
     }
 
     companion object {

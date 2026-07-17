@@ -12,6 +12,8 @@ import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
 import androidx.work.workDataOf
 import app.rebubble.data.local.InMemoryDatabaseFactory
+import app.rebubble.data.logging.RingBufferLogger
+import app.rebubble.notifications.SendFailureNotifier
 import app.rebubble.data.local.RebubbleDatabase
 import app.rebubble.data.local.entity.ChatEntity
 import app.rebubble.data.local.entity.MessageEntity
@@ -158,6 +160,8 @@ class OutboxSendTextTest {
                         db.messageDao(),
                         ingestor,
                         serverConfig,
+                        SendFailureNotifier(appContext),
+                        RingBufferLogger(),
                     )
                 },
             )
@@ -295,6 +299,8 @@ class OutboxSendTextTest {
                         db.messageDao(),
                         ingestor,
                         serverConfig,
+                        SendFailureNotifier(appContext),
+                        RingBufferLogger(),
                     )
                 },
             )

@@ -1,6 +1,7 @@
 package app.rebubble.data.remote.socket
 
 import app.rebubble.data.local.InMemoryDatabaseFactory
+import app.rebubble.data.logging.RingBufferLogger
 import app.rebubble.data.local.RebubbleDatabase
 import app.rebubble.data.remote.dto.ChatDto
 import app.rebubble.data.remote.dto.HandleDto
@@ -64,6 +65,7 @@ class SocketEventHandlerTest {
                 socketClient = fakeSocket,
                 ingestor = ingestor,
                 onReconnect = SocketReconnectAction { },
+                logger = RingBufferLogger(),
                 scope = localScope,
             )
             handler.start()
@@ -90,6 +92,7 @@ class SocketEventHandlerTest {
                 socketClient = fakeSocket,
                 ingestor = poisonIngestor,
                 onReconnect = SocketReconnectAction { },
+                logger = RingBufferLogger(),
                 scope = localScope,
             )
             handler.start()
@@ -121,6 +124,7 @@ class SocketEventHandlerTest {
                 socketClient = fakeSocket,
                 ingestor = ingestor,
                 onReconnect = SocketReconnectAction { reconcileCount++ },
+                logger = RingBufferLogger(),
                 scope = localScope,
             )
             handler.start()
@@ -157,6 +161,7 @@ class SocketEventHandlerTest {
                     reconcileStarted++
                     release.await()
                 },
+                logger = RingBufferLogger(),
                 scope = localScope,
             )
             handler.start()

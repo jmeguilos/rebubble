@@ -7,6 +7,7 @@ object RebubbleRoutes {
     const val ONBOARDING = "onboarding"
     const val CHATS = "chats"
     const val CHAT = "chat/{guid}"
+    const val SETTINGS = "settings"
 
     fun chat(guid: String): String = "chat/${Uri.encode(guid)}"
 }

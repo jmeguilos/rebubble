@@ -10,6 +10,7 @@ import app.rebubble.data.repo.ServerConfig
 import app.rebubble.data.repo.ServerConfigRepository
 import app.rebubble.data.sync.SyncOutcome
 import app.rebubble.data.sync.SyncStatus
+import app.rebubble.data.logging.RingBufferLogger;
 import app.rebubble.data.sync.SyncStatusTracker
 import app.rebubble.data.sync.SyncWatermarkStore
 import app.rebubble.notifications.FcmSetupResult
@@ -78,7 +79,7 @@ class OnboardingViewModelTest {
         )
         api = testBlueBubblesApi(serverConfig)
         watermarkStore = SyncWatermarkStore(newDataStore("sync_state"))
-        tracker = SyncStatusTracker()
+        tracker = SyncStatusTracker(RingBufferLogger())
     }
 
     @After

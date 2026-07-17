@@ -1,5 +1,6 @@
 package app.rebubble.data.sync
 
+import app.rebubble.data.logging.RingBufferLogger;
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -76,7 +77,7 @@ class SyncWorkerTest {
             secretStore = InMemorySecretStore(),
             apiProvider = Provider { api },
         )
-        tracker = SyncStatusTracker()
+        tracker = SyncStatusTracker(RingBufferLogger())
         alerted.clear()
         runBlocking {
             serverConfig.save(server.url("/").toString().trimEnd('/'), "pw")

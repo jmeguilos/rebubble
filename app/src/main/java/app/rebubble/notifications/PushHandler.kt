@@ -3,6 +3,7 @@ package app.rebubble.notifications
 import android.content.Context
 import android.util.Log
 import androidx.work.WorkManager
+import app.rebubble.data.logging.RingBufferLogger
 import app.rebubble.data.remote.dto.MessageDto
 import app.rebubble.data.sync.IngestSource
 import app.rebubble.data.sync.MessageIngestor
@@ -30,6 +31,7 @@ class PushHandler @Inject constructor(
     private val ingestor: MessageIngestor,
     private val newMessageAlert: NewMessageAlert,
     private val json: Json,
+    private val logger: RingBufferLogger,
     @param:ApplicationContext private val context: Context,
 ) {
 
@@ -50,19 +52,20 @@ class PushHandler @Inject constructor(
             }
 
             Log.d(LOG_TAG, "wake-only FCM type=$type; enqueuing expedited sync")
-            enqueueExpedited()
+            enqueueExpedited(reason = "wake-only type=$type")
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e(LOG_TAG, "PushHandler failed; enqueuing expedited sync", e)
-            runCatching { enqueueExpedited() }
+            runCatching { enqueueExpedited(reason = "handler failure: ${e.message}") }
         }
     }
 
     private fun parseMessageDto(payload: String): MessageDto? =
         runCatching { json.decodeFromString<MessageDto>(payload) }.getOrNull()
 
-    private fun enqueueExpedited() {
+    private fun enqueueExpedited(reason: String) {
+        logger.log(LOG_TAG, "fallback expedited sync ($reason)")
         SyncScheduling.enqueueExpedited(WorkManager.getInstance(context))
     }
 

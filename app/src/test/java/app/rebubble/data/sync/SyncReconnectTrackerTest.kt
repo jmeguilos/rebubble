@@ -1,5 +1,6 @@
 package app.rebubble.data.sync
 
+import app.rebubble.data.logging.RingBufferLogger;
 import app.rebubble.data.remote.socket.SocketReconnectAction
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -26,7 +27,7 @@ class SyncReconnectTrackerTest {
 
     @Test
     fun `reconnect action drives tracker through Syncing then Idle`() = runBlocking {
-        val tracker = SyncStatusTracker()
+        val tracker = SyncStatusTracker(RingBufferLogger())
         val gate = CompletableDeferred<Unit>()
         val action = SocketReconnectAction {
             tracker.track {

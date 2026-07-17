@@ -21,6 +21,7 @@ import app.rebubble.data.repo.ServerConfigRepository
 import app.rebubble.ui.chat.ChatRoute
 import app.rebubble.ui.chatlist.ChatListRoute
 import app.rebubble.ui.onboarding.OnboardingRoute
+import app.rebubble.ui.settings.SettingsRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -77,6 +78,9 @@ fun RebubbleNavHost(
                 onChatClick = { guid ->
                     navController.navigate(RebubbleRoutes.chat(guid))
                 },
+                onSettingsClick = {
+                    navController.navigate(RebubbleRoutes.SETTINGS)
+                },
             )
         }
         composable(
@@ -84,6 +88,11 @@ fun RebubbleNavHost(
             arguments = listOf(navArgument("guid") { type = NavType.StringType }),
         ) {
             ChatRoute(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(RebubbleRoutes.SETTINGS) {
+            SettingsRoute(
                 onBack = { navController.popBackStack() },
             )
         }

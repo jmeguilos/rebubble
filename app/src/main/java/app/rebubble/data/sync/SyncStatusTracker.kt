@@ -1,5 +1,6 @@
 package app.rebubble.data.sync
 
+import app.rebubble.data.logging.RingBufferLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,9 @@ sealed interface SyncStatus {
 }
 
 @Singleton
-class SyncStatusTracker @Inject constructor() {
+class SyncStatusTracker @Inject constructor(
+    private val logger: RingBufferLogger,
+) {
     private val _status = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val status: StateFlow<SyncStatus> = _status.asStateFlow()
 
@@ -77,6 +80,7 @@ class SyncStatusTracker @Inject constructor() {
                 if (activeCount.decrementAndGet() == 0) {
                     val errorMessage = lastError
                     _status.value = if (errorMessage != null) {
+                        logger.log("SyncStatusTracker", "sync error: $errorMessage")
                         SyncStatus.Error(
                             message = errorMessage,
                             at = System.currentTimeMillis(),

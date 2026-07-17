@@ -56,6 +56,7 @@ class PushHandlerTest {
             ingestor = ingestor,
             newMessageAlert = alert,
             json = json,
+            logger = app.rebubble.data.logging.RingBufferLogger(),
             context = context,
         )
     }
@@ -154,6 +155,7 @@ class PushHandlerTest {
             ingestor = exploding,
             newMessageAlert = alert,
             json = json,
+            logger = app.rebubble.data.logging.RingBufferLogger(),
             context = context,
         )
 

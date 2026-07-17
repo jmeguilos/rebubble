@@ -18,7 +18,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -61,6 +65,7 @@ private const val SYNC_ERROR_COPY = "Sync issue — retrying automatically"
 @Composable
 fun ChatListRoute(
     onChatClick: (String) -> Unit,
+    onSettingsClick: () -> Unit,
     viewModel: ChatListViewModel = hiltViewModel(),
     imageLoader: ImageLoader = rememberAppImageLoader(),
 ) {
@@ -68,6 +73,7 @@ fun ChatListRoute(
     ChatListScreen(
         uiState = uiState,
         onChatClick = onChatClick,
+        onSettingsClick = onSettingsClick,
         imageLoader = imageLoader,
     )
 }
@@ -89,6 +95,7 @@ fun ChatListScreen(
     onChatClick: (String) -> Unit,
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
+    onSettingsClick: () -> Unit = {},
     nowMs: Long = System.currentTimeMillis(),
     syncStatusBanner: @Composable (SyncStatus) -> Unit = { status ->
         SyncStatusBanner(status = status)
@@ -111,6 +118,14 @@ fun ChatListScreen(
                         text = "Rebubble",
                         style = MaterialTheme.typography.headlineMedium,
                     )
+                },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "Settings",
+                        )
+                    }
                 },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
