@@ -13,6 +13,12 @@ import kotlinx.serialization.Serializable
  * only populated when `config.includeParticipants`, hence default-empty here).
  * `lastMessage` is attached ad hoc by chatRouter.ts find() when `?with=lastmessage`
  * is requested (see routers/chatRouter.ts, `withLastMessage` branch).
+ *
+ * `isArchived` mirrors the local `ChatEntity.isArchived` column (archiving is a Messages.app/macOS
+ * action, so the server is the source of truth). Not independently re-verified against server
+ * source this task (no server checkout available, same caveat T3 flagged for `ContactDto`);
+ * defaults `false` so an older/differently-configured server that omits the field never regresses
+ * a chat to archived. Consumed by T7's [app.rebubble.data.sync.Reconciler] chat-metadata pass.
  */
 @Serializable
 data class ChatDto(
@@ -21,6 +27,7 @@ data class ChatDto(
     val style: Int,
     val chatIdentifier: String,
     val displayName: String? = null,
+    val isArchived: Boolean = false,
     val participants: List<HandleDto> = emptyList(),
     val lastMessage: MessageDto? = null
 )

@@ -23,6 +23,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Provider
 import javax.inject.Singleton
 
@@ -98,7 +99,7 @@ private const val COLLECTOR_RETRY_DELAY_MS = 250L
  */
 @Singleton
 class ServerConfigRepository @Inject constructor(
-    private val dataStore: DataStore<Preferences>,
+    @param:Named("server_config") private val dataStore: DataStore<Preferences>,
     private val secretStore: SecretStore,
     private val apiProvider: Provider<BlueBubblesApi>,
 ) : ServerCredentialsProvider {
