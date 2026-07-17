@@ -4,9 +4,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.supervisorScope
@@ -19,6 +20,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class, sdk = [35])
@@ -97,14 +99,15 @@ class SyncStatusTrackerTest {
             }
             assertEquals(SyncStatus.Syncing, emissions.next())
 
+            val bEntered = CompletableDeferred<Unit>()
             val jobB = async(Dispatchers.Default) {
                 tracker.track {
+                    bEntered.complete(Unit)
                     gateB.await()
                     SyncOutcome(emptyList(), null)
                 }
             }
-            // Give B time to enter track (still Syncing; StateFlow may not re-emit).
-            delay(50)
+            bEntered.await()
             assertEquals(SyncStatus.Syncing, tracker.status.value)
 
             gateA.complete(Unit)
@@ -135,13 +138,15 @@ class SyncStatusTrackerTest {
             }
             assertEquals(SyncStatus.Syncing, emissions.next())
 
+            val bEntered = CompletableDeferred<Unit>()
             val jobB = async(Dispatchers.Default) {
                 tracker.track {
+                    bEntered.complete(Unit)
                     gateB.await()
                     SyncOutcome(emptyList(), null)
                 }
             }
-            delay(50)
+            bEntered.await()
 
             gateA.complete(Unit)
             jobA.await()
@@ -182,6 +187,75 @@ class SyncStatusTrackerTest {
             assertTrue(error is SyncStatus.Error)
             assertEquals("boom", (error as SyncStatus.Error).message)
         }
+    }
+
+    @Test
+    fun `concurrent tracks never Idle or Error while body running`() = runBlocking {
+        val tracker = SyncStatusTracker()
+        val runningBodies = AtomicInteger(0)
+        val violations = AtomicInteger(0)
+        val n = 200
+        val started = CompletableDeferred<Unit>()
+
+        val sampler = launch(Dispatchers.Default) {
+            started.await()
+            while (isActive) {
+                // Read running first: Syncing is written before the body runs, so
+                // running>0 ⇒ entry's Syncing write already happened (happens-before).
+                val running = runningBodies.get()
+                val status = tracker.status.value
+                if (running > 0 && (status is SyncStatus.Idle || status is SyncStatus.Error)) {
+                    violations.incrementAndGet()
+                }
+            }
+        }
+
+        // N=200 track() calls on Default, pipelined across a few workers so entries
+        // overlap drains (the TOCTOU window). Mix success/error outcomes.
+        val remaining = AtomicInteger(n)
+        val jobs = List(2) { w ->
+            async(Dispatchers.Default) {
+                started.complete(Unit)
+                while (remaining.getAndDecrement() > 0) {
+                    tracker.track {
+                        runningBodies.incrementAndGet()
+                        try {
+                            // In-body checks + sampler: stuck Idle/Error must never be observed.
+                            if (tracker.status.value !is SyncStatus.Syncing) {
+                                violations.incrementAndGet()
+                            }
+                            // Wall-clock hold (not delay) so Robolectric virtual time cannot skip it.
+                            Thread.sleep(1)
+                            if (tracker.status.value !is SyncStatus.Syncing) {
+                                violations.incrementAndGet()
+                            }
+                            if (w % 2 == 0) {
+                                SyncOutcome(emptyList(), null)
+                            } else {
+                                SyncOutcome(emptyList(), IOException("err-$w"))
+                            }
+                        } finally {
+                            runningBodies.decrementAndGet()
+                        }
+                    }
+                }
+            }
+        }
+
+        jobs.awaitAll()
+        sampler.cancel()
+
+        assertEquals(0, runningBodies.get())
+        assertEquals(
+            "status Idle/Error while a track body was mid-execution (TOCTOU)",
+            0,
+            violations.get(),
+        )
+        val finalStatus = tracker.status.value
+        assertTrue(
+            "final status must be Idle or Error per drain rule, was $finalStatus",
+            finalStatus is SyncStatus.Idle || finalStatus is SyncStatus.Error,
+        )
     }
 
     private suspend fun <T> collectEmissions(

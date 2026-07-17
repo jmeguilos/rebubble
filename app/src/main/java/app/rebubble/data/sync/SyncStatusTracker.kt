@@ -31,8 +31,8 @@ class SyncStatusTracker @Inject constructor() {
     private val _status = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val status: StateFlow<SyncStatus> = _status.asStateFlow()
 
+    private val lock = Any()
     private val activeCount = AtomicInteger(0)
-    @Volatile
     private var lastError: String? = null
 
     /**
@@ -42,39 +42,51 @@ class SyncStatusTracker @Inject constructor() {
      *
      * Non-[CancellationException] throws record Error(message) via `lastError` and rethrow.
      * [CancellationException] restores drain state (no new error) and rethrows.
+     *
+     * Count and status mutations (entry increment+Syncing; drain decrement+lastError resolve+write)
+     * share one critical section so observers never see Idle/Error while a track is still active.
+     * The lock is not held across [block].
      */
     suspend fun track(block: suspend () -> SyncOutcome): SyncOutcome {
-        activeCount.incrementAndGet()
-        _status.value = SyncStatus.Syncing
+        synchronized(lock) {
+            activeCount.incrementAndGet()
+            _status.value = SyncStatus.Syncing
+        }
         try {
             val outcome = try {
                 block()
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (failure: Exception) {
-                lastError = failure.message ?: failure.toString()
+                synchronized(lock) {
+                    lastError = failure.message ?: failure.toString()
+                }
                 throw failure
             }
-            val error = outcome.error
-            if (error != null) {
-                lastError = error.message ?: error.toString()
-            } else {
-                lastError = null
+            synchronized(lock) {
+                val error = outcome.error
+                if (error != null) {
+                    lastError = error.message ?: error.toString()
+                } else {
+                    lastError = null
+                }
             }
             return outcome
         } finally {
-            if (activeCount.decrementAndGet() == 0) {
-                val errorMessage = lastError
-                _status.value = if (errorMessage != null) {
-                    SyncStatus.Error(
-                        message = errorMessage,
-                        at = System.currentTimeMillis(),
-                    )
+            synchronized(lock) {
+                if (activeCount.decrementAndGet() == 0) {
+                    val errorMessage = lastError
+                    _status.value = if (errorMessage != null) {
+                        SyncStatus.Error(
+                            message = errorMessage,
+                            at = System.currentTimeMillis(),
+                        )
+                    } else {
+                        SyncStatus.Idle
+                    }
                 } else {
-                    SyncStatus.Idle
+                    _status.value = SyncStatus.Syncing
                 }
-            } else {
-                _status.value = SyncStatus.Syncing
             }
         }
     }
