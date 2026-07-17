@@ -1,0 +1,23 @@
+appId: app.rebubble.android
+---
+# Assumes prior successful flow-onboard.yaml (app already connected; do not clearState).
+# Fixture server must be running. Triggers incoming via host-side HTTP (127.0.0.1).
+- launchApp
+- extendedWaitUntil:
+    visible: "Fixture Friends"
+    timeout: 30000
+- runScript: receive-incoming.js
+- extendedWaitUntil:
+    visible: "Maestro fixture hello"
+    timeout: 30000
+- tapOn: "Maestro fixture hello"
+- extendedWaitUntil:
+    visible: "Message"
+    timeout: 15000
+- tapOn: "Message"
+- inputText: "Maestro reply"
+- tapOn:
+    accessibilityText: "Send"
+- extendedWaitUntil:
+    visible: "Maestro reply"
+    timeout: 30000

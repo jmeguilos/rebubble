@@ -1,0 +1,31 @@
+appId: app.rebubble.android
+---
+# Onboard against the host fixture server (emulator → 10.0.2.2:12346).
+# Prerequisite: `cd tools/fixture-server && npm install && node server.js`
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Enter address manually"
+    timeout: 30000
+- tapOn: "Enter address manually"
+- tapOn: "Server address"
+- eraseText
+- inputText: "http://10.0.2.2:12346"
+- tapOn: "Password"
+- eraseText
+- inputText: "fixture-pass"
+- tapOn: "Connect"
+# Post-onboarding notification permission (API 33+) — best-effort dismiss/allow.
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- runFlow:
+    when:
+      visible: "While using the app"
+    commands:
+      - tapOn: "Allow"
+- extendedWaitUntil:
+    visible: "Fixture Friends"
+    timeout: 60000

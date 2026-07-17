@@ -25,3 +25,7 @@ captures/
 
 # Native / NDK
 .externalNativeBuild/
+
+# Node (fixture server)
+node_modules/
+tools/fixture-server/node_modules/
