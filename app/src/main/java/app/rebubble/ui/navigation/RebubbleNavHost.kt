@@ -1,6 +1,5 @@
 package app.rebubble.ui.navigation
 
-import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -87,7 +86,8 @@ fun RebubbleNavHost(
             route = RebubbleRoutes.CHAT,
             arguments = listOf(navArgument("guid") { type = NavType.StringType }),
         ) { entry ->
-            val guid = Uri.decode(entry.arguments?.getString("guid").orEmpty())
+            // NavType.StringType / NavDeepLink already Uri.decode path args (navigation 2.8.x).
+            val guid = entry.arguments?.getString("guid").orEmpty()
             ChatDetailPlaceholder(guid = guid)
         }
     }

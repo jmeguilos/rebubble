@@ -145,18 +145,10 @@ class ChatRepositoryTest {
                 IngestSource.SOCKET,
             )
 
-            // Ingest may invalidate chats and chat_handles separately; wait for the preview bump.
-            val second = withTimeout(5_000) {
-                var latest: List<ChatListItem>
-                do {
-                    latest = emissions.next()
-                } while (
-                    latest.firstOrNull()?.guid != "chat-new" ||
-                        latest.first { it.guid == "chat-new" }.lastMessagePreview != "brand new"
-                )
-                latest
-            }
+            // distinctUntilChanged drops identical chats+handles dual-invalidation intermediates.
+            val second = emissions.next()
             assertEquals(listOf("chat-new", "chat-old"), second.map { it.guid })
+            assertEquals("brand new", second.first { it.guid == "chat-new" }.lastMessagePreview)
             assertEquals(200L, second.first { it.guid == "chat-new" }.lastMessageDate)
         }
     }

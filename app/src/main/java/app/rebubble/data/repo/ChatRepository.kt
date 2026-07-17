@@ -6,6 +6,7 @@ import app.rebubble.data.local.dao.HandleDao
 import app.rebubble.data.local.entity.HandleEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -65,5 +66,5 @@ class ChatRepository @Inject constructor(
                     },
                 )
             }
-        }
+        }.distinctUntilChanged()
 }
