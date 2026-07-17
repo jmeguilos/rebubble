@@ -15,4 +15,7 @@ interface ContactDao {
 
     @Query("SELECT * FROM contacts")
     fun observeContacts(): Flow<List<ContactEntity>>
+
+    @Query("SELECT * FROM contacts")
+    suspend fun getAll(): List<ContactEntity>
 }

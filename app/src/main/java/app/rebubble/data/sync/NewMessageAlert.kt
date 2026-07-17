@@ -9,14 +9,15 @@ import javax.inject.Singleton
  *
  * **Idempotency (T7 flag):** the same guid may be delivered more than once across runs — e.g. if
  * the watermark write fails after a page was ingested, the next reconcile re-surfaces those guids.
- * Implementations **must** dedupe / be idempotent (T15's real notifier will own that).
+ * Implementations **must** dedupe / be idempotent ([app.rebubble.notifications.MessageNotifier]
+ * owns that via per-chat last-notified max dateCreated + setOnlyAlertOnce).
  */
 fun interface NewMessageAlert {
     suspend fun onNewMessages(guids: List<String>)
 }
 
 /**
- * Default DI binding until T15: log-only no-op. Does not post notifications.
+ * Retained log-only fallback. Production DI binds [app.rebubble.notifications.MessageNotifier].
  */
 @Singleton
 class LoggingNewMessageAlert @Inject constructor() : NewMessageAlert {

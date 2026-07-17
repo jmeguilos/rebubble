@@ -30,6 +30,24 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE guid = :guid")
     suspend fun getByGuid(guid: String): MessageEntity?
 
+    /** Batch lookup for notification / alert fan-out. Empty [guids] is a no-op caller concern. */
+    @Query("SELECT * FROM messages WHERE guid IN (:guids)")
+    suspend fun getByGuids(guids: List<String>): List<MessageEntity>
+
+    /**
+     * Suspend variant of [observeMessages]: newest-first non-reaction window for one chat
+     * (MessagingStyle history in T15).
+     */
+    @Query(
+        """
+        SELECT * FROM messages
+        WHERE chatGuid = :chatGuid AND associatedMessageType IS NULL
+        ORDER BY dateCreated DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getRecentNonReaction(chatGuid: String, limit: Int): List<MessageEntity>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(messages: List<MessageEntity>)
 

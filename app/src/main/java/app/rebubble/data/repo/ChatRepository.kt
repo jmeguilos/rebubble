@@ -3,9 +3,6 @@ package app.rebubble.data.repo
 import app.rebubble.data.local.dao.ChatDao
 import app.rebubble.data.local.dao.ContactDao
 import app.rebubble.data.local.dao.HandleDao
-import app.rebubble.data.local.entity.ChatEntity
-import app.rebubble.data.local.entity.ContactEntity
-import app.rebubble.data.local.entity.HandleEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -28,9 +25,8 @@ data class ChatListItem(
  * [ContactDao.observeContacts] so a contact rename re-resolves titles; per emission, loads each
  * chat's participants via [HandleDao.participantsFor] (suspend) inside [mapLatest].
  *
- * Title resolution order: non-blank [ChatEntity.displayName] → per-participant labels
- * (contact displayName when present, else address) joined ", " → [ChatEntity.chatIdentifier]
- * → guid. [ChatListItem.isGroup] is `style == 43` (BlueBubbles group chat style).
+ * Title resolution: [resolveChatTitle]. [ChatListItem.isGroup] is `style == 43`
+ * (BlueBubbles group chat style — [GROUP_CHAT_STYLE]).
  *
  * Chat refresh / reconciler upserts are owned elsewhere — this repository does not call the API.
  */
@@ -53,34 +49,12 @@ class ChatRepository @Inject constructor(
                     val participants = handleDao.participantsFor(chat.guid)
                     ChatListItem(
                         guid = chat.guid,
-                        title = resolveTitle(chat, participants, contactsByAddress),
-                        isGroup = chat.style == GROUP_STYLE,
+                        title = resolveChatTitle(chat, participants, contactsByAddress),
+                        isGroup = chat.style == GROUP_CHAT_STYLE,
                         lastMessageDate = chat.lastMessageDate,
                         lastMessagePreview = chat.lastMessagePreview,
                         style = chat.style,
                     )
                 }
             }
-
-    private fun resolveTitle(
-        chat: ChatEntity,
-        participants: List<HandleEntity>,
-        contactsByAddress: Map<String, ContactEntity>,
-    ): String {
-        chat.displayName?.takeIf { it.isNotBlank() }?.let { return it }
-
-        if (participants.isNotEmpty()) {
-            return participants.joinToString(", ") { handle ->
-                contactsByAddress[handle.address]?.displayName?.takeIf { it.isNotBlank() }
-                    ?: handle.address
-            }
-        }
-
-        return chat.chatIdentifier?.takeIf { it.isNotBlank() } ?: chat.guid
-    }
-
-    private companion object {
-        /** BlueBubbles / iMessage group-chat style. */
-        const val GROUP_STYLE = 43
-    }
 }

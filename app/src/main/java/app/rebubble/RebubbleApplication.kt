@@ -12,6 +12,7 @@ import app.rebubble.data.repo.ServerConfigRepository
 import app.rebubble.data.sync.SyncScheduling
 import app.rebubble.notifications.FcmSetupResult
 import app.rebubble.notifications.FirebaseBootstrapper
+import app.rebubble.notifications.NotificationChannels
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
@@ -48,6 +49,7 @@ class RebubbleApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        NotificationChannels.ensureCreated(this)
         ProcessLifecycleOwner.get().lifecycle.addObserver(socketLifecycleObserver)
         socketEventHandler.start()
         // Unconditional: cold-start config is Flow-based; priming url() on the main thread is

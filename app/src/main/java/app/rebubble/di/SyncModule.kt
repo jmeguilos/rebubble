@@ -8,11 +8,11 @@ import app.rebubble.data.local.dao.ChatDao
 import app.rebubble.data.local.dao.HandleDao
 import app.rebubble.data.local.dao.MessageDao
 import app.rebubble.data.remote.api.BlueBubblesApi
-import app.rebubble.data.sync.LoggingNewMessageAlert
 import app.rebubble.data.sync.MessageIngestor
 import app.rebubble.data.sync.NewMessageAlert
 import app.rebubble.data.sync.Reconciler
 import app.rebubble.data.sync.SyncWatermarkStore
+import app.rebubble.notifications.MessageNotifier
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -30,8 +30,9 @@ import javax.inject.Singleton
  * that must serialize every caller's reconcile (FCM wake, app-open, socket reconnect, periodic
  * WorkManager) against that single watermark.
  *
- * [NewMessageAlert] defaults to [LoggingNewMessageAlert] (T15 replaces with the real notifier).
- * [app.rebubble.data.sync.SyncStatusTracker] uses constructor `@Inject` + `@Singleton`.
+ * [NewMessageAlert] is bound to [MessageNotifier] (T15). [LoggingNewMessageAlert] remains for
+ * reference / manual swap. [app.rebubble.data.sync.SyncStatusTracker] uses constructor `@Inject`
+ * + `@Singleton`.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -39,7 +40,7 @@ abstract class SyncModule {
 
     @Binds
     @Singleton
-    abstract fun bindNewMessageAlert(impl: LoggingNewMessageAlert): NewMessageAlert
+    abstract fun bindNewMessageAlert(impl: MessageNotifier): NewMessageAlert
 
     companion object {
         @Provides
