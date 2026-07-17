@@ -2,6 +2,7 @@ package app.rebubble.notifications
 
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.RemoteInput
 import android.content.Context
 import android.content.Intent
@@ -169,6 +170,23 @@ class MessageNotifierTest {
         val style = messagingStyle(notification)
         assertEquals("hello from alice", style.messages.last().text.toString())
         assertFalse(style.isGroupConversation)
+    }
+
+    @Test
+    fun `contentIntent uses FLAG_UPDATE_CURRENT`() = runBlocking {
+        seedDm()
+        db.messageDao().insertAll(
+            listOf(message("m1", CHAT_GUID, "hello", dateCreated = 1_000L)),
+        )
+
+        notifier.onNewMessages(listOf("m1"))
+
+        val notification = requireNotNull(posted())
+        val flags = shadowOf(notification.contentIntent).flags
+        assertTrue(
+            "MessageNotifier contentIntent must replace extras on re-post",
+            flags and PendingIntent.FLAG_UPDATE_CURRENT != 0,
+        )
     }
 
     @Test

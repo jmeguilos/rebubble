@@ -1,11 +1,13 @@
 package app.rebubble.notifications
 
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import app.rebubble.MainActivity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,5 +48,19 @@ class SendFailureNotifierTest {
         val intent = shadowOf(notification.contentIntent).savedIntent
         assertEquals(MainActivity::class.java.name, intent.component!!.className)
         assertEquals(chatGuid, intent.getStringExtra(MessageNotifier.EXTRA_CHAT_GUID))
+    }
+
+    @Test
+    fun `contentIntent uses FLAG_UPDATE_CURRENT`() {
+        val chatGuid = "iMessage;-;+15551234567"
+        notifier.notifySendFailed(chatGuid)
+
+        val notification = shadowOf(notificationManager).getNotification(chatGuid.hashCode())
+        assertNotNull(notification)
+        val flags = shadowOf(notification!!.contentIntent).flags
+        assertTrue(
+            "SendFailureNotifier contentIntent must replace extras on re-post",
+            flags and PendingIntent.FLAG_UPDATE_CURRENT != 0,
+        )
     }
 }

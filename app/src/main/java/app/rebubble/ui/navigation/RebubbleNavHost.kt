@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +24,7 @@ import app.rebubble.ui.chatlist.ChatListRoute
 import app.rebubble.ui.onboarding.OnboardingRoute
 import app.rebubble.ui.settings.SettingsRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -46,6 +48,7 @@ fun RebubbleNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     startDestinationViewModel: StartDestinationViewModel = hiltViewModel(),
+    pendingDeepLinkChatGuid: MutableStateFlow<String?> = MutableStateFlow(null),
 ) {
     val startDestination by startDestinationViewModel.startDestination.collectAsStateWithLifecycle()
 
@@ -57,6 +60,25 @@ fun RebubbleNavHost(
             CircularProgressIndicator()
         }
         return
+    }
+
+    // Consume notification deep links only after start destination is known. Un-onboarded
+    // cold starts (ONBOARDING) drop the pending guid so it cannot fire after onboarding.
+    val resolvedStart = startDestination
+    LaunchedEffect(resolvedStart) {
+        if (resolvedStart != RebubbleRoutes.CHATS) {
+            pendingDeepLinkChatGuid.value = null
+            return@LaunchedEffect
+        }
+        pendingDeepLinkChatGuid.collect { guid ->
+            if (guid == null) return@collect
+            navigateNotificationDeepLink(
+                navController = navController,
+                chatGuid = guid,
+                startDestination = resolvedStart,
+            )
+            pendingDeepLinkChatGuid.value = null
+        }
     }
 
     NavHost(
