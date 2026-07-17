@@ -1,0 +1,33 @@
+{
+  "_source": "FcmRouter.getClientConfig() lines 11-32: returns FileSystem.getFCMClient() (the raw google-services.json contents) verbatim as `data` -- packages/server/src/server/api/http/api/v1/routers/fcmRouter.ts",
+  "status": 200,
+  "message": "Success",
+  "data": {
+    "project_info": {
+      "project_number": "123456789012",
+      "firebase_url": "https://rebubble-test.firebaseio.com",
+      "project_id": "rebubble-test",
+      "storage_bucket": "rebubble-test.appspot.com"
+    },
+    "client": [
+      {
+        "client_info": {
+          "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+          "android_client_info": { "package_name": "app.rebubble.android" }
+        },
+        "oauth_client": [
+          { "client_id": "123456789012", "client_type": 3 }
+        ],
+        "api_key": [
+          { "current_key": "AIzaSyDUMMYKEYFORFIXTUREUSEONLY0000" }
+        ],
+        "services": {
+          "appinvite_service": {
+            "other_platform_oauth_client": []
+          }
+        }
+      }
+    ],
+    "configuration_version": "1"
+  }
+}

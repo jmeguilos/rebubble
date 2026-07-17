@@ -1,0 +1,9 @@
+{
+  "_source": "responses/errors.ts BadRequest lines 47-59 (status 400, error.type Validation Error, error.message); responses/types.ts ResponseJson lines 34-41 (status,message,error{type,message}) -- packages/server/src/server/api/http/api/v1/responses/{errors,types}.ts",
+  "status": 400,
+  "message": "You've made a bad request! Please check your request params & body",
+  "error": {
+    "type": "Validation Error",
+    "message": "No chat GUID provided"
+  }
+}

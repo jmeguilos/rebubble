@@ -1,0 +1,30 @@
+{
+  "_source": "messageRouter.ts sendText() lines 237,262-278 (tempGuid removed from send cache then re-injected onto the serialized response: data.tempGuid = tempGuid); MessageSerializer.ts convert() lines 130-163 for base fields -- packages/server/src/server/api/http/api/v1/routers/messageRouter.ts",
+  "status": 200,
+  "message": "Message sent!",
+  "data": {
+    "originalROWID": 601,
+    "tempGuid": "temp-3f1a9c2e-4b7d-4e11-9f0a-1234567890ab",
+    "guid": "p:0/A1B2C3D4-0000-0000-0000-000000000601",
+    "text": "On my way!",
+    "subject": null,
+    "error": 0,
+    "dateCreated": 1752346000000,
+    "dateRead": null,
+    "dateDelivered": null,
+    "isFromMe": true,
+    "handle": null,
+    "handleId": 0,
+    "attachments": [],
+    "itemType": 0,
+    "groupTitle": null,
+    "groupActionType": 0,
+    "associatedMessageGuid": null,
+    "associatedMessageType": null,
+    "threadOriginatorGuid": null,
+    "threadOriginatorPart": null,
+    "expressiveSendStyleId": null,
+    "dateEdited": null,
+    "dateRetracted": null
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "_source": "GeneralInterface.getServerMetadata() lines 13-27 (computer_id,os_version,server_version,private_api,proxy_service,helper_connected,detected_icloud,detected_imessage,macos_time_sync,local_ipv4s,local_ipv6s) -- packages/server/src/server/api/interfaces/generalInterface.ts",
+  "status": 200,
+  "message": "Success",
+  "data": {
+    "computer_id": "F0E1D2C3-B4A5-4678-9012-ABCDEF012345",
+    "os_version": "14.5",
+    "server_version": "1.9.7",
+    "private_api": true,
+    "helper_connected": true,
+    "proxy_service": "dynamic-dns",
+    "detected_icloud": "user@icloud.com",
+    "detected_imessage": "user@icloud.com",
+    "macos_time_sync": 0,
+    "local_ipv4s": ["192.168.1.42"],
+    "local_ipv6s": ["fe80::1"]
+  }
+}
