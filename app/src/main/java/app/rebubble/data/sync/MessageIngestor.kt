@@ -137,7 +137,10 @@ class MessageIngestor(
                 val attachments = MessageMapper.toAttachmentEntities(dto, messageGuid = dto.guid)
                 if (attachments.isNotEmpty()) attachmentDao.insertAll(attachments)
 
-                chatDao.updatePreview(chatGuid, mapped.dateCreated, previewFor(dto, mapped))
+                // Only update preview for regular messages, not reactions.
+                if (mapped.associatedMessageType == null) {
+                    chatDao.updatePreview(chatGuid, mapped.dateCreated, previewFor(dto, mapped))
+                }
             }
 
             IngestResult(insertedGuids = inserted, updated = updated, maxRowId = maxRowId)

@@ -414,4 +414,44 @@ class MessageIngestorTest {
         assertEquals(listOf("good"), result.insertedGuids)
         assertTrue("bad" !in result.insertedGuids)
     }
+
+    // --- 12. reactions do not advance chat preview -------------------------------------------------
+
+    @Test
+    fun `a reaction message does not advance the chat preview or date`() = runBlocking {
+        // Seed existing message with preview
+        ingestor.ingest(
+            listOf(messageDto("m1", text = "hello", dateCreated = 1000L)),
+            IngestSource.SOCKET,
+        )
+
+        // Verify initial state
+        var chat = db.chatDao().getByGuid("chat-1")
+        assertEquals("hello", chat?.lastMessagePreview)
+        assertEquals(1000L, chat?.lastMessageDate)
+
+        // Ingest a reaction (associatedMessageType = "love", text = null, dateCreated = 2000L)
+        val reactionResult = ingestor.ingest(
+            listOf(
+                messageDto(
+                    "r1",
+                    text = null,
+                    dateCreated = 2000L,
+                    associatedMessageType = "love",
+                    associatedMessageGuid = "m1",
+                    attachments = emptyList(),
+                )
+            ),
+            IngestSource.SOCKET,
+        )
+
+        // Assert the reaction was stored
+        assertEquals(listOf("r1"), reactionResult.insertedGuids)
+        assertNotNull(db.messageDao().getByGuid("r1"))
+
+        // Assert the chat preview was NOT updated
+        chat = db.chatDao().getByGuid("chat-1")
+        assertEquals("hello", chat?.lastMessagePreview)
+        assertEquals(1000L, chat?.lastMessageDate)
+    }
 }
