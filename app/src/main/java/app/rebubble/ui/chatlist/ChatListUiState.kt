@@ -5,7 +5,7 @@ import app.rebubble.data.sync.SyncStatus
 
 /**
  * Chat list screen state. [Loading] until the first [ChatRepository.observeChats] emission;
- * then [Empty] or [Loaded]. Sync banner is derived from [syncStatus] (Idle → none).
+ * then [Empty] or [Loaded]. Sync chip is derived from [syncStatus] (Idle → none).
  */
 sealed interface ChatListUiState {
     data object Loading : ChatListUiState
@@ -20,7 +20,7 @@ sealed interface ChatListUiState {
     ) : ChatListUiState
 }
 
-/** True when the sync-status banner slot should render something (Syncing or Error). */
+/** True when the sync-status chip slot should render something (Syncing or Error). */
 val ChatListUiState.showSyncBanner: Boolean
     get() {
         val status = when (this) {

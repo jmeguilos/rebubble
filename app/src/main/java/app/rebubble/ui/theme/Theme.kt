@@ -79,6 +79,7 @@ fun RebubbleTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = RebubbleShapes,
         content = content,
     )
 }
