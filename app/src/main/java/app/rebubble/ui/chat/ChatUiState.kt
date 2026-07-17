@@ -13,6 +13,8 @@ data class ChatUiState(
     val items: List<ChatUiItem> = emptyList(),
     val endReached: Boolean = false,
     val loading: Boolean = true,
+    val transientError: String? = null,
+    val pendingScrollToBottom: Boolean = false,
 )
 
 sealed interface ChatUiItem {

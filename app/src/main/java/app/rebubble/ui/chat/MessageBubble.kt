@@ -67,6 +67,7 @@ fun MessageBubble(
     isSms: Boolean,
     selected: Boolean,
     onLongPress: () -> Unit,
+    onTap: () -> Unit = {},
     onRetry: () -> Unit,
     onDownloadAttachment: (String) -> Unit,
     imageLoader: ImageLoader,
@@ -138,7 +139,10 @@ fun MessageBubble(
                 .clip(shape)
                 .background(containerColor)
                 .pointerInput(item.key) {
-                    detectTapGestures(onLongPress = { onLongPress() })
+                    detectTapGestures(
+                        onLongPress = { onLongPress() },
+                        onTap = { onTap() },
+                    )
                 }
                 .padding(
                     horizontal = if (item.attachments.isEmpty()) 12.dp else 4.dp,

@@ -14,6 +14,7 @@ import app.rebubble.data.repo.ChatRepository
 import app.rebubble.data.repo.MessageRepository
 import app.rebubble.notifications.ActiveChatTracker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +44,8 @@ class ChatViewModel @Inject constructor(
 
     private val endReached = MutableStateFlow(false)
     private val loadOlderMutex = Mutex()
+    private val transientError = MutableStateFlow<String?>(null)
+    private val pendingScrollToBottom = MutableStateFlow(false)
 
     private val chatMeta = chatRepository.observeChats()
         .map { chats -> chats.find { it.guid == chatGuid } }
@@ -71,6 +74,10 @@ class ChatViewModel @Inject constructor(
             endReached = reached,
             loading = false,
         )
+    }.combine(transientError) { state, error ->
+        state.copy(transientError = error)
+    }.combine(pendingScrollToBottom) { state, scroll ->
+        state.copy(pendingScrollToBottom = scroll)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -98,17 +105,34 @@ class ChatViewModel @Inject constructor(
         super.onCleared()
     }
 
+    fun clearTransientError() {
+        transientError.value = null
+    }
+
+    fun consumeScrollToBottom() {
+        pendingScrollToBottom.value = false
+    }
+
     fun sendText(text: String) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return
         viewModelScope.launch {
+            pendingScrollToBottom.value = true
             outboxRepository.sendText(chatGuid, trimmed)
         }
     }
 
     fun sendAttachment(uri: Uri) {
         viewModelScope.launch {
-            outboxRepository.sendAttachment(chatGuid, uri)
+            try {
+                pendingScrollToBottom.value = true
+                outboxRepository.sendAttachment(chatGuid, uri)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                pendingScrollToBottom.value = false
+                transientError.value = "Couldn't attach that file."
+            }
         }
     }
 
@@ -149,6 +173,11 @@ class ChatViewModel @Inject constructor(
                 if (count < PAGE_SIZE) {
                     endReached.value = true
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Leave endReached=false so scroll-up can retry after reconnect.
+                transientError.value = "Couldn't load older messages."
             } finally {
                 loadOlderMutex.unlock()
             }

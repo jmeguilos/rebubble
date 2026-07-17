@@ -1,9 +1,10 @@
 package app.rebubble.ui.chat
 
+import android.animation.ValueAnimator
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -32,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -83,6 +87,8 @@ fun ChatRoute(
         onRetry = viewModel::retry,
         onDownloadAttachment = viewModel::ensureDownloaded,
         onLoadOlder = viewModel::loadOlder,
+        onTransientErrorShown = viewModel::clearTransientError,
+        onScrollToBottomConsumed = viewModel::consumeScrollToBottom,
         imageLoader = imageLoader,
     )
 }
@@ -97,11 +103,14 @@ fun ChatScreen(
     onRetry: (String) -> Unit,
     onDownloadAttachment: (String) -> Unit,
     onLoadOlder: () -> Unit,
+    onTransientErrorShown: () -> Unit = {},
+    onScrollToBottomConsumed: () -> Unit = {},
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     var selectedGuid by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val shouldLoadOlder by remember {
         derivedStateOf {
@@ -117,8 +126,28 @@ fun ChatScreen(
         }
     }
 
+    LaunchedEffect(uiState.transientError) {
+        val message = uiState.transientError ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        onTransientErrorShown()
+    }
+
+    val firstKey = uiState.items.firstOrNull()?.key
+    LaunchedEffect(firstKey, uiState.pendingScrollToBottom) {
+        if (!uiState.pendingScrollToBottom) return@LaunchedEffect
+        val first = uiState.items.firstOrNull() as? ChatUiItem.Bubble ?: return@LaunchedEffect
+        if (!first.message.isFromMe) return@LaunchedEffect
+        if (ValueAnimator.areAnimatorsEnabled()) {
+            listState.animateScrollToItem(0)
+        } else {
+            listState.scrollToItem(0)
+        }
+        onScrollToBottomConsumed()
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -167,7 +196,11 @@ fun ChatScreen(
                 LazyColumn(
                     state = listState,
                     reverseLayout = true,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { selectedGuid = null })
+                        },
                 ) {
                     items(
                         items = uiState.items,
@@ -185,6 +218,7 @@ fun ChatScreen(
                                     selectedGuid =
                                         if (selectedGuid == item.message.guid) null else item.message.guid
                                 },
+                                onTap = { selectedGuid = null },
                                 onRetry = { onRetry(item.message.guid) },
                                 onDownloadAttachment = onDownloadAttachment,
                                 imageLoader = imageLoader,

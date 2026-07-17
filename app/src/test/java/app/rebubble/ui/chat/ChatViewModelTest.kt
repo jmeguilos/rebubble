@@ -49,6 +49,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -308,6 +309,77 @@ class ChatViewModelTest {
     }
 
     @Test
+    fun `loadOlder IOException sets transientError and allows retry`() = runBlocking {
+        db.messageDao().insertAll(listOf(message("m1", dateCreated = 100L)))
+        messageRepository.throwOnLoadOlder = IOException("offline")
+        messageRepository.nextResult = 50
+
+        val vm = viewModel()
+        awaitState(vm) { it.items.filterIsInstance<ChatUiItem.Bubble>().size == 1 }
+
+        vm.loadOlder()
+        val errored = awaitState(vm) { it.transientError != null }
+        assertEquals("Couldn't load older messages.", errored.transientError)
+        assertFalse(errored.endReached)
+        assertEquals(1, messageRepository.loadOlderCalls.size)
+
+        vm.clearTransientError()
+        messageRepository.throwOnLoadOlder = null
+        vm.loadOlder()
+        delay(20)
+        assertEquals(2, messageRepository.loadOlderCalls.size)
+        assertNull(vm.uiState.value.transientError)
+    }
+
+    @Test
+    fun `sendAttachment failure sets transientError without crashing`() = runBlocking {
+        outbox.throwOnSendAttachment = IOException("copy failed")
+        val vm = viewModel()
+        awaitState(vm) { !it.loading }
+
+        val file = tempFolder.newFile("bad.jpg")
+        file.writeBytes(byteArrayOf(1, 2, 3))
+        vm.sendAttachment(Uri.fromFile(file))
+
+        val errored = awaitState(vm) { it.transientError != null }
+        assertEquals("Couldn't attach that file.", errored.transientError)
+        assertFalse(errored.pendingScrollToBottom)
+        assertEquals(1, outbox.sendAttachmentCalls.size)
+    }
+
+    @Test
+    fun `sendText sets pendingScrollToBottom`() = runBlocking {
+        val vm = viewModel()
+        awaitState(vm) { !it.loading }
+        assertFalse(vm.uiState.value.pendingScrollToBottom)
+
+        vm.sendText("hello")
+        val scrolled = awaitState(vm) { it.pendingScrollToBottom }
+        assertTrue(scrolled.pendingScrollToBottom)
+
+        vm.consumeScrollToBottom()
+        val cleared = awaitState(vm) { !it.pendingScrollToBottom }
+        assertFalse(cleared.pendingScrollToBottom)
+    }
+
+    @Test
+    fun `incoming repository emission does not set pendingScrollToBottom`() = runBlocking {
+        val vm = viewModel()
+        awaitState(vm) { !it.loading }
+        assertFalse(vm.uiState.value.pendingScrollToBottom)
+
+        db.messageDao().insertAll(
+            listOf(message("incoming-1", dateCreated = 500L, text = "hey", isFromMe = false)),
+        )
+        awaitState(vm) {
+            it.items.any { item ->
+                item is ChatUiItem.Bubble && item.message.guid == "incoming-1"
+            }
+        }
+        assertFalse(vm.uiState.value.pendingScrollToBottom)
+    }
+
+    @Test
     fun `isSms true when guid starts with SMS`() = runBlocking {
         val smsGuid = "SMS;-;+15550001111"
         db.chatDao().upsert(
@@ -341,6 +413,7 @@ class ChatViewModelTest {
         val loadOlderCalls = mutableListOf<Call>()
         var nextResult: Int = 50
         var blockLoadOlder: CompletableDeferred<Unit>? = null
+        var throwOnLoadOlder: Throwable? = null
         private val inFlight = AtomicInteger(0)
 
         override suspend fun loadOlder(chatGuid: String, beforeMs: Long, pageSize: Int): Int {
@@ -349,6 +422,7 @@ class ChatViewModelTest {
             try {
                 loadOlderCalls += Call(chatGuid, beforeMs, pageSize)
                 blockLoadOlder?.await()
+                throwOnLoadOlder?.let { throw it }
                 return nextResult
             } finally {
                 inFlight.decrementAndGet()
@@ -363,6 +437,7 @@ class ChatViewModelTest {
         val sendTextCalls = mutableListOf<Pair<String, String>>()
         val sendAttachmentCalls = mutableListOf<Pair<String, Uri>>()
         val retryCalls = mutableListOf<String>()
+        var throwOnSendAttachment: Throwable? = null
 
         override suspend fun sendText(chatGuid: String, text: String): String {
             sendTextCalls += chatGuid to text
@@ -376,6 +451,7 @@ class ChatViewModelTest {
             mimeType: String?,
         ): String {
             sendAttachmentCalls += chatGuid to uri
+            throwOnSendAttachment?.let { throw it }
             return super.sendAttachment(chatGuid, uri, displayName, mimeType)
         }
 
