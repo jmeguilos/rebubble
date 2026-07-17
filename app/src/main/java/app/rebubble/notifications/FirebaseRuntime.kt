@@ -23,15 +23,31 @@ import kotlinx.coroutines.tasks.await
  */
 interface FirebaseRuntime {
     /**
-     * Ensures the default [FirebaseApp] exists for [params]. Idempotent: if a default app is
-     * already present, returns without re-initializing (upstream early-out via
-     * `FirebaseApp.getInstance()`).
+     * Ensures the default [FirebaseApp] exists for [params].
+     *
+     * **Server switch:** if a default app already exists but its `projectId` / `applicationId`
+     * differ from [params], deletes it and re-initializes (see [needsReinit]). That delete+reinit
+     * path is the supported way to move to another BlueBubbles Firebase project in-process.
+     *
+     * **[FirebaseMessagingService] caveat:** the service binds to the default app only. After
+     * delete+reinit the default app is the new project, so subsequent `onMessageReceived` /
+     * `onNewToken` callbacks apply to that project — but any in-flight work against the old app
+     * is invalidated, and callers must re-fetch and re-register the token (as
+     * [FirebaseBootstrapper.setup] already does after [ensureInitialized]).
      */
     fun ensureInitialized(context: Context, params: FirebaseOptionsParams)
 
     /** Fetches an FCM registration token from the default [FirebaseMessaging] instance. */
     suspend fun fetchToken(): String
 }
+
+/**
+ * Returns true when an existing default FirebaseApp (described by [current]) must be deleted and
+ * re-initialized before using [incoming] — i.e. when `projectId` or `applicationId` differ.
+ * Pure / unit-testable; used by [DefaultFirebaseRuntime.ensureInitialized].
+ */
+fun needsReinit(current: FirebaseOptionsParams, incoming: FirebaseOptionsParams): Boolean =
+    current.projectId != incoming.projectId || current.applicationId != incoming.applicationId
 
 /**
  * Production Firebase adapter. Requires Google Play Services; token fetch needs a real device /
@@ -44,12 +60,31 @@ class DefaultFirebaseRuntime : FirebaseRuntime {
             throw IllegalStateException("Google Play Services is not available (status=$playStatus)")
         }
 
-        try {
+        val existing = try {
             FirebaseApp.getInstance()
-            Log.d(LOG_TAG, "Firebase default app already initialized")
-            return
         } catch (_: IllegalStateException) {
-            // Not initialized yet — continue.
+            null
+        }
+
+        if (existing != null) {
+            val current = FirebaseOptionsParams(
+                apiKey = existing.options.apiKey.orEmpty(),
+                applicationId = existing.options.applicationId,
+                projectId = existing.options.projectId.orEmpty(),
+                gcmSenderId = existing.options.gcmSenderId.orEmpty(),
+                storageBucket = existing.options.storageBucket,
+                databaseUrl = existing.options.databaseUrl,
+            )
+            if (!needsReinit(current, params)) {
+                Log.d(LOG_TAG, "Firebase default app already initialized")
+                return
+            }
+            Log.d(
+                LOG_TAG,
+                "Firebase project changed (${current.projectId} → ${params.projectId}); " +
+                    "deleting default app for reinit",
+            )
+            existing.delete()
         }
 
         val options = FirebaseOptions.Builder()
