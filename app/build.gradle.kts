@@ -81,6 +81,10 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
 
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)
@@ -88,4 +92,5 @@ dependencies {
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.work.testing)
 }
