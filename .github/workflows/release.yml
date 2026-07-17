@@ -43,16 +43,12 @@ jobs:
       - name: Assemble signed release APK
         if: steps.signing.outputs.signed == 'true'
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          REBUBBLE_KEYSTORE_PATH: ${{ runner.temp }}/rebubble.keystore
+          REBUBBLE_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          REBUBBLE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          REBUBBLE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          ./gradlew :app:assembleRelease \
-            -Pandroid.injected.signing.store.file="${RUNNER_TEMP}/rebubble.keystore" \
-            -Pandroid.injected.signing.store.password="${KEYSTORE_PASSWORD}" \
-            -Pandroid.injected.signing.key.alias="${KEY_ALIAS}" \
-            -Pandroid.injected.signing.key.password="${KEY_PASSWORD}" \
-            --stacktrace
+          ./gradlew :app:assembleRelease --stacktrace
           mkdir -p dist
           cp app/build/outputs/apk/release/*.apk dist/rebubble-${GITHUB_REF_NAME}.apk
 

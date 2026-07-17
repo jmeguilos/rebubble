@@ -22,6 +22,35 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    val releaseKeystorePath =
+        (project.findProperty("REBUBBLE_KEYSTORE_PATH") as String?)
+            ?: System.getenv("REBUBBLE_KEYSTORE_PATH")
+    val releaseKeystorePassword =
+        (project.findProperty("REBUBBLE_KEYSTORE_PASSWORD") as String?)
+            ?: System.getenv("REBUBBLE_KEYSTORE_PASSWORD")
+    val releaseKeyAlias =
+        (project.findProperty("REBUBBLE_KEY_ALIAS") as String?)
+            ?: System.getenv("REBUBBLE_KEY_ALIAS")
+    val releaseKeyPassword =
+        (project.findProperty("REBUBBLE_KEY_PASSWORD") as String?)
+            ?: System.getenv("REBUBBLE_KEY_PASSWORD")
+    val hasReleaseSigning =
+        !releaseKeystorePath.isNullOrBlank() &&
+            !releaseKeystorePassword.isNullOrBlank() &&
+            !releaseKeyAlias.isNullOrBlank() &&
+            !releaseKeyPassword.isNullOrBlank()
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -29,6 +58,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

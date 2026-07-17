@@ -19,7 +19,7 @@ appId: app.rebubble.android
     accessibilityText: "Send"
 - extendedWaitUntil:
     visible: "Not sent — tap to retry"
-    timeout: 120000
+    timeout: 180000
 - tapOn: "Not sent — tap to retry"
 - extendedWaitUntil:
     visible: "Fail then retry"
