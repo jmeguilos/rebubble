@@ -1,4 +1,4 @@
-# Bubble — Native Android Client for the BlueBubbles Server
+# Rebubble — Native Android Client for the BlueBubbles Server
 
 **Date:** 2026-07-16
 **Status:** Approved design
@@ -14,7 +14,7 @@ The macOS **server** component is the solid part of the ecosystem: it exposes a 
 
 ## Decision
 
-Build **Bubble**: a clean-room **Kotlin + Jetpack Compose** Android app that talks to an **unmodified BlueBubbles macOS server**. Not a fork of the Flutter code; not based on OpenBubbles/rustpush (which removes the Mac relay but inherits the Flutter UI and carries Apple-impersonation breakage/ban risk).
+Build **Rebubble** (name chosen 2026-07-16; applicationId `app.rebubble.android`): a clean-room **Kotlin + Jetpack Compose** Android app that talks to an **unmodified BlueBubbles macOS server**. Not a fork of the Flutter code; not based on OpenBubbles/rustpush (which removes the Mac relay but inherits the Flutter UI and carries Apple-impersonation breakage/ban risk).
 
 - **Audience:** public open-source project from day one (Apache-2.0, matching upstream). Pitch: *"Keep your server, replace the app."*
 - **Push strategy:** FCM (user's own Firebase project, exactly as the server supports today) + reconciliation sync fallback so no message is ever silently missed.
