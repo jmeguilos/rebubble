@@ -62,22 +62,12 @@ fun RebubbleNavHost(
         return
     }
 
-    // Consume notification deep links only after start destination is known. Un-onboarded
-    // cold starts (ONBOARDING) drop the pending guid so it cannot fire after onboarding.
-    val resolvedStart = startDestination
-    LaunchedEffect(resolvedStart) {
-        if (resolvedStart != RebubbleRoutes.CHATS) {
-            pendingDeepLinkChatGuid.value = null
-            return@LaunchedEffect
-        }
+    // Always collect warm/cold deep links. Navigate only when current nav is past
+    // onboarding; guids that arrive on ONBOARDING are dropped (not queued).
+    LaunchedEffect(startDestination) {
         pendingDeepLinkChatGuid.collect { guid ->
             if (guid == null) return@collect
-            navigateNotificationDeepLink(
-                navController = navController,
-                chatGuid = guid,
-                startDestination = resolvedStart,
-            )
-            pendingDeepLinkChatGuid.value = null
+            consumePendingNotificationDeepLink(navController, pendingDeepLinkChatGuid)
         }
     }
 
