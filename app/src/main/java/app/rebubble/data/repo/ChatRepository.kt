@@ -28,9 +28,9 @@ data class ChatListItem(
  * [ContactDao.observeContacts] so a contact rename re-resolves titles; per emission, loads each
  * chat's participants via [HandleDao.participantsFor] (suspend) inside [mapLatest].
  *
- * Title resolution order: non-blank [ChatEntity.displayName] → participant contact displayNames
- * joined ", " → participant addresses joined ", " → [ChatEntity.chatIdentifier] → guid.
- * [ChatListItem.isGroup] is `style == 43` (BlueBubbles group chat style).
+ * Title resolution order: non-blank [ChatEntity.displayName] → per-participant labels
+ * (contact displayName when present, else address) joined ", " → [ChatEntity.chatIdentifier]
+ * → guid. [ChatListItem.isGroup] is `style == 43` (BlueBubbles group chat style).
  *
  * Chat refresh / reconciler upserts are owned elsewhere — this repository does not call the API.
  */
@@ -69,13 +69,11 @@ class ChatRepository @Inject constructor(
     ): String {
         chat.displayName?.takeIf { it.isNotBlank() }?.let { return it }
 
-        val contactNames = participants.mapNotNull { handle ->
-            contactsByAddress[handle.address]?.displayName?.takeIf { it.isNotBlank() }
-        }
-        if (contactNames.isNotEmpty()) return contactNames.joinToString(", ")
-
         if (participants.isNotEmpty()) {
-            return participants.joinToString(", ") { it.address }
+            return participants.joinToString(", ") { handle ->
+                contactsByAddress[handle.address]?.displayName?.takeIf { it.isNotBlank() }
+                    ?: handle.address
+            }
         }
 
         return chat.chatIdentifier?.takeIf { it.isNotBlank() } ?: chat.guid

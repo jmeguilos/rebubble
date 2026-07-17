@@ -184,7 +184,25 @@ class ChatRepositoryTest {
             }
         }
 
-    // --- 3. contact-name change propagates ------------------------------------------------------
+    // --- 3. mixed contact + unresolved address --------------------------------------------------
+
+    @Test
+    fun `title mixes contact displayName with unresolved participant address`() = runBlocking {
+        val addressA = "+15554440001"
+        val addressB = "+15554440002"
+        db.chatDao().upsert(listOf(chat("mixed", displayName = null, chatIdentifier = addressA)))
+        seedParticipants("mixed", addressA, addressB)
+        db.contactDao().upsert(
+            listOf(ContactEntity(address = addressA, displayName = "John", avatarPath = null))
+        )
+
+        collectEmissions(repo.observeChats()) { emissions ->
+            val item = emissions.next().single()
+            assertEquals("John, $addressB", item.title)
+        }
+    }
+
+    // --- 4. contact-name change propagates ------------------------------------------------------
 
     @Test
     fun `upserting a ContactEntity after the first emission updates the chat title`() = runBlocking {
