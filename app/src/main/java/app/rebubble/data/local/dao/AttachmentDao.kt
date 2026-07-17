@@ -36,6 +36,19 @@ interface AttachmentDao {
     @Query("SELECT * FROM attachments WHERE messageGuid = :messageGuid")
     fun observeForMessage(messageGuid: String): Flow<List<AttachmentEntity>>
 
+    /**
+     * All attachments for messages in [chatGuid]. Used by the chat screen to bind media to the
+     * message window without N per-row collectors.
+     */
+    @Query(
+        """
+        SELECT attachments.* FROM attachments
+        INNER JOIN messages ON attachments.messageGuid = messages.guid
+        WHERE messages.chatGuid = :chatGuid
+        """,
+    )
+    fun observeForChat(chatGuid: String): Flow<List<AttachmentEntity>>
+
     @Query("SELECT * FROM attachments WHERE messageGuid = :messageGuid")
     suspend fun getForMessage(messageGuid: String): List<AttachmentEntity>
 

@@ -2,15 +2,11 @@ package app.rebubble.ui.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -22,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.rebubble.data.repo.ServerConfigRepository
+import app.rebubble.ui.chat.ChatRoute
 import app.rebubble.ui.chatlist.ChatListRoute
 import app.rebubble.ui.onboarding.OnboardingRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -85,30 +82,10 @@ fun RebubbleNavHost(
         composable(
             route = RebubbleRoutes.CHAT,
             arguments = listOf(navArgument("guid") { type = NavType.StringType }),
-        ) { entry ->
-            // NavType.StringType / NavDeepLink already Uri.decode path args (navigation 2.8.x).
-            val guid = entry.arguments?.getString("guid").orEmpty()
-            ChatDetailPlaceholder(guid = guid)
+        ) {
+            ChatRoute(
+                onBack = { navController.popBackStack() },
+            )
         }
-    }
-}
-
-/** T17 placeholder — T18 replaces with the real chat screen. */
-@Composable
-fun ChatDetailPlaceholder(
-    guid: String,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = guid,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
     }
 }

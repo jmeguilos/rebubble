@@ -22,7 +22,7 @@ import javax.inject.Singleton
  * per-guid [Mutex] map — the first caller streams; waiters re-check disk after acquiring the lock.
  */
 @Singleton
-class AttachmentRepository @Inject constructor(
+open class AttachmentRepository @Inject constructor(
     private val attachmentDao: AttachmentDao,
     private val downloader: AttachmentDownloader,
     private val cache: AttachmentCache,
@@ -30,7 +30,7 @@ class AttachmentRepository @Inject constructor(
 
     private val locks = ConcurrentHashMap<String, Mutex>()
 
-    suspend fun ensureDownloaded(guid: String): Result<String> {
+    open suspend fun ensureDownloaded(guid: String): Result<String> {
         val mutex = locks.getOrPut(guid) { Mutex() }
         return mutex.withLock {
             val entity = attachmentDao.getByGuid(guid)

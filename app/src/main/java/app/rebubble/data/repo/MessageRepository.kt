@@ -22,20 +22,20 @@ import javax.inject.Singleton
  * intentionally does not touch the watermark, and this repository never calls it either.
  */
 @Singleton
-class MessageRepository @Inject constructor(
+open class MessageRepository @Inject constructor(
     private val api: BlueBubblesApi,
     private val messageDao: MessageDao,
     private val ingestor: MessageIngestor,
 ) {
 
-    fun observeMessages(chatGuid: String, limit: Int = 100): Flow<List<MessageEntity>> =
+    open fun observeMessages(chatGuid: String, limit: Int = 100): Flow<List<MessageEntity>> =
         messageDao.observeMessages(chatGuid, limit)
 
     /**
      * @return count of messages **received** from the server page (not necessarily newly
      *   inserted — duplicates are merged by the ingestor).
      */
-    suspend fun loadOlder(chatGuid: String, beforeMs: Long, pageSize: Int = 50): Int {
+    open suspend fun loadOlder(chatGuid: String, beforeMs: Long, pageSize: Int = 50): Int {
         val dtos = apiCall {
             api.chatMessages(
                 g = chatGuid,

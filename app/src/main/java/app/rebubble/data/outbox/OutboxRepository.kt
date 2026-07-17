@@ -42,7 +42,7 @@ import javax.inject.Singleton
  * duplicate after manual retry is acceptable M1 behavior.
  */
 @Singleton
-class OutboxRepository @Inject constructor(
+open class OutboxRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val messageDao: MessageDao,
     private val chatDao: ChatDao,
@@ -53,7 +53,7 @@ class OutboxRepository @Inject constructor(
      * Optimistically inserts a SENDING row, advances the chat preview, enqueues
      * [SendTextWorker] (`ExistingWorkPolicy.KEEP`), and returns the generated tempGuid.
      */
-    suspend fun sendText(chatGuid: String, text: String): String {
+    open suspend fun sendText(chatGuid: String, text: String): String {
         val tempGuid = newTempGuid()
         val now = System.currentTimeMillis()
         messageDao.insertAll(
@@ -93,7 +93,7 @@ class OutboxRepository @Inject constructor(
      * The content URI is copied **before** enqueue — picker URIs expire and must not be read
      * later from the worker.
      */
-    suspend fun sendAttachment(
+    open suspend fun sendAttachment(
         chatGuid: String,
         uri: Uri,
         displayName: String? = null,
@@ -171,7 +171,7 @@ class OutboxRepository @Inject constructor(
      * message, re-enqueues [SendAttachmentWorker] with input rebuilt from that row; otherwise
      * [SendTextWorker] (requires non-null text).
      */
-    suspend fun retry(tempGuid: String) {
+    open suspend fun retry(tempGuid: String) {
         val row = messageDao.getByGuid(tempGuid) ?: return
         if (row.sendStatus != SendStatus.FAILED) return
 

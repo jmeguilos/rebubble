@@ -93,6 +93,7 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
 
     implementation(libs.coil.compose)
+    implementation("androidx.compose.material:material-icons-extended")
 
     // Runtime-initialized FCM (no google-services plugin / no compile-time google-services.json).
     implementation(libs.firebase.messaging)
