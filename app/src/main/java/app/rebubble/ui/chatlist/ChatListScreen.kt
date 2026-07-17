@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -114,12 +115,14 @@ fun ChatListScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { _ ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars),
-        ) {
-            ChatListHeader(onSettingsClick = onSettingsClick)
+        // Tonal Scaffold bg extends under the status bar; only the header consumes status insets.
+        Column(modifier = Modifier.fillMaxSize()) {
+            ChatListHeader(
+                onSettingsClick = onSettingsClick,
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .consumeWindowInsets(WindowInsets.statusBars),
+            )
 
             SearchConversationsPill(
                 onClick = {
@@ -439,12 +442,12 @@ private fun ChatListEmptyDarkPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "Syncing")
+@Preview(showBackground = true, name = "Syncing · light")
 @Composable
-private fun ChatListSyncingPreview() {
+private fun ChatListSyncingLightPreview() {
     val context = LocalContext.current
     val now = System.currentTimeMillis()
-    RebubbleTheme(dynamicColor = false) {
+    RebubbleTheme(darkTheme = false, dynamicColor = false) {
         ChatListScreen(
             uiState = ChatListUiState.Loaded(
                 items = previewItems(now),
@@ -457,12 +460,48 @@ private fun ChatListSyncingPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "Sync error")
+@Preview(showBackground = true, name = "Syncing · dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun ChatListSyncErrorPreview() {
+private fun ChatListSyncingDarkPreview() {
     val context = LocalContext.current
     val now = System.currentTimeMillis()
-    RebubbleTheme(dynamicColor = false) {
+    RebubbleTheme(darkTheme = true, dynamicColor = false) {
+        ChatListScreen(
+            uiState = ChatListUiState.Loaded(
+                items = previewItems(now),
+                syncStatus = SyncStatus.Syncing,
+            ),
+            onChatClick = {},
+            imageLoader = ImageLoader.Builder(context).build(),
+            nowMs = now,
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Sync error · light")
+@Composable
+private fun ChatListSyncErrorLightPreview() {
+    val context = LocalContext.current
+    val now = System.currentTimeMillis()
+    RebubbleTheme(darkTheme = false, dynamicColor = false) {
+        ChatListScreen(
+            uiState = ChatListUiState.Loaded(
+                items = previewItems(now),
+                syncStatus = SyncStatus.Error(message = "timeout", at = 1L),
+            ),
+            onChatClick = {},
+            imageLoader = ImageLoader.Builder(context).build(),
+            nowMs = now,
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Sync error · dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ChatListSyncErrorDarkPreview() {
+    val context = LocalContext.current
+    val now = System.currentTimeMillis()
+    RebubbleTheme(darkTheme = true, dynamicColor = false) {
         ChatListScreen(
             uiState = ChatListUiState.Loaded(
                 items = previewItems(now),

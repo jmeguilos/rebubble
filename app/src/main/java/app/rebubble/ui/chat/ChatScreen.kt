@@ -6,8 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -176,11 +178,8 @@ fun ChatScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { _ ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars),
-        ) {
+        // Tonal Scaffold bg extends under the status bar; only the app bar consumes status insets.
+        Column(modifier = Modifier.fillMaxSize()) {
             ChatAppBar(
                 title = uiState.title,
                 avatarPath = uiState.avatarPath,
@@ -188,6 +187,9 @@ fun ChatScreen(
                 imageLoader = imageLoader,
                 onBack = onBack,
                 onSettingsClick = onSettingsClick,
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .consumeWindowInsets(WindowInsets.statusBars),
             )
 
             Surface(
@@ -206,6 +208,7 @@ fun ChatScreen(
                         LazyColumn(
                             state = listState,
                             reverseLayout = true,
+                            contentPadding = PaddingValues(bottom = 12.dp),
                             modifier = Modifier
                                 .fillMaxSize()
                                 .pointerInput(Unit) {

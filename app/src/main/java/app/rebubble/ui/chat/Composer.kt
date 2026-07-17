@@ -126,13 +126,30 @@ fun Composer(
                 disabledIndicatorColor = Color.Transparent,
             ),
         )
-        AnimatedVisibility(
+        // Fixed slot so the pill field does not resize when the send button appears.
+        SendButtonSlot(
             visible = canSend,
+            onSend = { send() },
+        )
+    }
+}
+
+@Composable
+private fun SendButtonSlot(
+    visible: Boolean,
+    onSend: () -> Unit,
+) {
+    Box(
+        modifier = Modifier.size(44.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedVisibility(
+            visible = visible,
             enter = fadeIn() + scaleIn(),
             exit = fadeOut() + scaleOut(),
         ) {
             FilledIconButton(
-                onClick = { send() },
+                onClick = onSend,
                 modifier = Modifier.size(44.dp),
                 shape = CircleShape,
                 colors = IconButtonDefaults.filledIconButtonColors(
