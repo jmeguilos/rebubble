@@ -5,6 +5,8 @@ import app.rebubble.data.local.dao.AttachmentDao
 import app.rebubble.data.local.entity.DownloadState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -16,6 +18,10 @@ import javax.inject.Singleton
  *
  * Eviction only walks the attachments cache tree; `filesDir/outbox/` lives under a different
  * root and is never considered.
+ *
+ * In-progress downloads use `*.tmp` (see [AttachmentDownloader]); those files count toward
+ * usage so the cap stays honest, but are never eviction candidates — deleting them mid-write
+ * would corrupt a concurrent download for a different guid.
  */
 @Singleton
 class AttachmentCache @Inject constructor(
@@ -24,6 +30,9 @@ class AttachmentCache @Inject constructor(
 ) {
     /** Test override — production uses [DEFAULT_MAX_BYTES]. */
     internal var maxBytes: Long = DEFAULT_MAX_BYTES
+
+    /** Serializes [enforceLimit] so concurrent finishers do not race the same walk/delete. */
+    private val enforceMutex = Mutex()
 
     private val cacheRoot: File
         get() = File(context.cacheDir, ATTACHMENTS_DIR)
@@ -39,29 +48,36 @@ class AttachmentCache @Inject constructor(
      * Deletes oldest-accessed files under [cacheRoot] until total size is ≤ [maxBytes].
      * For each deleted file, clears the matching [AttachmentEntity.localPath] and resets
      * [DownloadState] to [DownloadState.NOT_DOWNLOADED].
+     *
+     * `*.tmp` files (in-progress downloads) count toward total usage but are never deleted.
      */
     suspend fun enforceLimit() = withContext(Dispatchers.IO) {
-        val root = cacheRoot
-        if (!root.exists()) return@withContext
+        enforceMutex.withLock {
+            val root = cacheRoot
+            if (!root.exists()) return@withLock
 
-        val files = root.walkTopDown().filter { it.isFile }.toList()
-        var total = files.sumOf { it.length() }
-        if (total <= maxBytes) return@withContext
+            val files = root.walkTopDown().filter { it.isFile }.toList()
+            var total = files.sumOf { it.length() }
+            if (total <= maxBytes) return@withLock
 
-        val oldestFirst = files.sortedBy { it.lastModified() }
-        for (file in oldestFirst) {
-            if (total <= maxBytes) break
-            val path = file.absolutePath
-            val size = file.length()
-            if (!file.delete()) continue
-            total -= size
-            val entity = attachmentDao.getByLocalPath(path) ?: continue
-            attachmentDao.update(
-                entity.copy(
-                    localPath = null,
-                    downloadState = DownloadState.NOT_DOWNLOADED,
-                ),
-            )
+            // Count .tmp toward usage (honest cap) but never evict them mid-write.
+            val oldestFirst = files
+                .filter { !it.name.endsWith(".tmp") }
+                .sortedBy { it.lastModified() }
+            for (file in oldestFirst) {
+                if (total <= maxBytes) break
+                val path = file.absolutePath
+                val size = file.length()
+                if (!file.delete()) continue
+                total -= size
+                val entity = attachmentDao.getByLocalPath(path) ?: continue
+                attachmentDao.update(
+                    entity.copy(
+                        localPath = null,
+                        downloadState = DownloadState.NOT_DOWNLOADED,
+                    ),
+                )
+            }
         }
     }
 

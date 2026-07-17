@@ -12,6 +12,8 @@ import app.rebubble.data.remote.api.testBlueBubblesApi
 import app.rebubble.data.repo.AttachmentRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -260,6 +262,77 @@ class AttachmentDownloadCacheTest {
         assertTrue(outboxFile.exists())
         assertArrayEquals(outboxBytes, outboxFile.readBytes())
         assertEquals(outboxModified, outboxFile.lastModified())
+    }
+
+    @Test
+    fun `enforceLimit never evicts in-progress tmp files even when older`() = runBlocking {
+        // Cap fits neither file alone once both count toward usage (20+20=40 > 25),
+        // so eviction must run — but only the completed cache file is eligible.
+        val tinyCache = AttachmentCache.forTests(
+            context = context,
+            attachmentDao = db.attachmentDao(),
+            maxBytes = 25L,
+        )
+        val now = System.currentTimeMillis()
+        val attachments = File(context.cacheDir, AttachmentCache.ATTACHMENTS_DIR)
+
+        val cachedDir = File(attachments, "cached-guid")
+        cachedDir.mkdirs()
+        val cached = File(cachedDir, "photo.jpg")
+        cached.writeBytes(ByteArray(20) { 1 })
+        cached.setLastModified(now - 1000)
+
+        // Matches AttachmentDownloader: `$transferName.tmp` under guid dir.
+        // Older mtime than `cached` so LRU would prefer it as victim if eligible.
+        val downloadingDir = File(attachments, "downloading-guid")
+        downloadingDir.mkdirs()
+        val tmp = File(downloadingDir, "photo.jpg.tmp")
+        tmp.writeBytes(ByteArray(20) { 2 })
+        tmp.setLastModified(now - 5000)
+
+        db.attachmentDao().insertAll(listOf(attachmentRow("cached-guid", cached.absolutePath)))
+
+        tinyCache.enforceLimit()
+
+        assertTrue("in-progress .tmp must survive eviction", tmp.exists())
+        assertArrayEquals(ByteArray(20) { 2 }, tmp.readBytes())
+        assertFalse("completed cache file should be evicted under cap pressure", cached.exists())
+    }
+
+    @Test
+    fun `concurrent enforceLimit calls serialize and end under cap`() = runBlocking {
+        val tinyCache = AttachmentCache.forTests(
+            context = context,
+            attachmentDao = db.attachmentDao(),
+            maxBytes = 30L,
+        )
+        val now = System.currentTimeMillis()
+        val attachments = File(context.cacheDir, AttachmentCache.ATTACHMENTS_DIR)
+
+        fun place(guid: String, bytes: ByteArray, modified: Long): File {
+            val dir = File(attachments, guid)
+            dir.mkdirs()
+            val file = File(dir, "a.bin")
+            file.writeBytes(bytes)
+            file.setLastModified(modified)
+            return file
+        }
+
+        val files = listOf(
+            place("c1", ByteArray(20) { 1 }, now - 3000),
+            place("c2", ByteArray(20) { 2 }, now - 2000),
+            place("c3", ByteArray(20) { 3 }, now - 1000),
+        )
+        db.attachmentDao().insertAll(
+            files.mapIndexed { i, f -> attachmentRow("c${i + 1}", f.absolutePath) },
+        )
+
+        val jobs = List(2) { launch { tinyCache.enforceLimit() } }
+        jobs.joinAll()
+
+        val remaining = attachments.walkTopDown().filter { it.isFile }.toList()
+        assertTrue(remaining.sumOf { it.length() } <= 30L)
+        assertTrue(remaining.all { it.exists() })
     }
 
     @Test
