@@ -63,6 +63,9 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
+    implementation(libs.okhttp)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
@@ -70,4 +73,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.core)
+    testImplementation(libs.okhttp.mockwebserver)
 }
