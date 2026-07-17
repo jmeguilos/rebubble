@@ -2,10 +2,15 @@ package app.rebubble.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+/** Brand seed when dynamic color is unavailable — ultramarine, deliberately not iMessage blue. */
+val Ultramarine = Color(0xFF2D4FE0)
+val UltramarineLight = Color(0xFFB4C3FF)
+val UltramarineContainer = Color(0xFFDCE1FF)
+val OnUltramarine = Color(0xFFFFFFFF)
+val OnUltramarineContainer = Color(0xFF00174B)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val SoftSurface = Color(0xFFF3F4FA)
+val SoftSurfaceDark = Color(0xFF12141A)
+val Mist = Color(0xFFE4E5ED)
+val Ink = Color(0xFF1A1C22)
+val InkMuted = Color(0xFF5A5F72)

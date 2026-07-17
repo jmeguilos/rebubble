@@ -4,17 +4,16 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import app.rebubble.ui.navigation.RebubbleNavHost
+import app.rebubble.ui.onboarding.OnboardingScreen
+import app.rebubble.ui.onboarding.OnboardingUiState
 import app.rebubble.ui.theme.RebubbleTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -33,19 +32,13 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun RebubbleApp() {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
+    Surface(modifier = Modifier.fillMaxSize()) {
         Scaffold { innerPadding ->
-            Box(
+            RebubbleNavHost(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "Rebubble")
-            }
+            )
         }
     }
 }
@@ -53,7 +46,17 @@ fun RebubbleApp() {
 @Preview(showBackground = true)
 @Composable
 fun RebubbleAppPreview() {
-    RebubbleTheme {
-        RebubbleApp()
+    RebubbleTheme(dynamicColor = false) {
+        OnboardingScreen(
+            state = OnboardingUiState.Welcome,
+            onScanQr = {},
+            onEnterManual = {},
+            onUrlChange = {},
+            onPasswordChange = {},
+            onConnect = {},
+            onRetry = {},
+            onBack = {},
+            onDismissQrError = {},
+        )
     }
 }
