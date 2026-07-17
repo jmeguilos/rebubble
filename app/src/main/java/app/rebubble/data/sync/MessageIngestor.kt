@@ -52,7 +52,7 @@ data class IngestResult(
  * After a successful insert/merge/swap the referenced chat's denormalized
  * `lastMessageDate`/`lastMessagePreview` are advanced via [ChatDao.updatePreview] (only-if-newer).
  */
-class MessageIngestor(
+open class MessageIngestor(
     private val db: RebubbleDatabase,
     private val messageDao: MessageDao,
     private val chatDao: ChatDao,
@@ -64,7 +64,7 @@ class MessageIngestor(
      * @param fallbackChatGuid chat guid to route to when a dto carries no `chats[]` (used by the
      *   send path, which already knows the target chat for its SEND_ACK).
      */
-    suspend fun ingest(
+    open suspend fun ingest(
         dtos: List<MessageDto>,
         source: IngestSource,
         fallbackChatGuid: String? = null,

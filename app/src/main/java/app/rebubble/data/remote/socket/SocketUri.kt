@@ -38,3 +38,14 @@ fun buildSocketQuery(password: String): String {
         .query
     return checkNotNull(encoded) { "OkHttp failed to encode guid query" }
 }
+
+/**
+ * Log-safe form of a socket connection [URI]: scheme + host + port only.
+ *
+ * Never include the query string — [buildSocketUri] puts `guid=<password>` there.
+ */
+fun redactSocketUriForLog(uri: URI): String {
+    val host = uri.host ?: ""
+    val port = if (uri.port >= 0) ":${uri.port}" else ""
+    return "${uri.scheme}://$host$port"
+}

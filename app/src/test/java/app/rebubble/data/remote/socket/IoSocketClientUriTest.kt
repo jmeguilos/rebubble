@@ -1,6 +1,7 @@
 package app.rebubble.data.remote.socket
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.URLDecoder
@@ -35,5 +36,18 @@ class IoSocketClientUriTest {
         assertTrue(query.startsWith("guid="))
         val decoded = URLDecoder.decode(query.removePrefix("guid="), StandardCharsets.UTF_8)
         assertEquals(password, decoded)
+    }
+
+    @Test
+    fun `redactSocketUriForLog keeps host and strips password query`() {
+        val password = "super-secret-password-xyz"
+        val uri = buildSocketUri("http://192.168.1.20:1234", password)
+        val redacted = redactSocketUriForLog(uri)
+        assertTrue(redacted.contains("192.168.1.20"))
+        assertTrue(redacted.contains("1234"))
+        assertTrue(redacted.startsWith("http://"))
+        assertFalse(redacted.contains(password))
+        assertFalse(redacted.contains("guid="))
+        assertFalse(redacted.contains("?"))
     }
 }

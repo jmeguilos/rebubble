@@ -5,15 +5,20 @@ import app.rebubble.data.remote.api.ServerCredentialsProvider
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.net.URI
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
 /**
@@ -29,20 +34,36 @@ import javax.inject.Singleton
  * [MutableSharedFlow.tryEmit] into a shared flow with
  * `extraBufferCapacity = [EVENT_BUFFER_CAPACITY]` (default overflow
  * [kotlinx.coroutines.channels.BufferOverflow.SUSPEND]). [tryEmit] never suspends: if the
- * buffer is full, the emission is dropped and logged — the socket thread is never blocked, and
- * drops are not silent. Under normal foreground consumption this path should not fire.
+ * buffer is full, the emission is dropped and logged, and a debounced [SocketReconnectAction]
+ * runs so the missed frame is recovered via reconcile (same path as reconnect). A burst of
+ * drops schedules at most one in-flight reconcile ([AtomicBoolean] gate). The socket thread is
+ * never blocked.
  */
 @Singleton
-class IoSocketClient @Inject constructor(
+class IoSocketClient(
     private val credentials: ServerCredentialsProvider,
     private val parser: SocketPayloadParser,
+    private val onReconnect: SocketReconnectAction,
+    private val scope: CoroutineScope,
+    eventBufferCapacity: Int = EVENT_BUFFER_CAPACITY,
 ) : SocketClient {
 
-    private val _events = MutableSharedFlow<SocketEvent>(extraBufferCapacity = EVENT_BUFFER_CAPACITY)
+    @Inject
+    constructor(
+        credentials: ServerCredentialsProvider,
+        parser: SocketPayloadParser,
+        onReconnect: SocketReconnectAction,
+        @Named("socket") scope: CoroutineScope,
+    ) : this(credentials, parser, onReconnect, scope, EVENT_BUFFER_CAPACITY)
+
+    private val _events = MutableSharedFlow<SocketEvent>(extraBufferCapacity = eventBufferCapacity)
     override val events: SharedFlow<SocketEvent> = _events.asSharedFlow()
 
     private val _connectionState = MutableStateFlow(ConnState.DISCONNECTED)
     override val connectionState: StateFlow<ConnState> = _connectionState.asStateFlow()
+
+    /** Gates overflow→reconcile so a drop burst does not queue N concurrent reconciles. */
+    private val overflowReconcilePending = AtomicBoolean(false)
 
     @Volatile
     private var socket: Socket? = null
@@ -68,7 +89,7 @@ class IoSocketClient @Inject constructor(
                 query = buildSocketQuery(password)
             }
             val s = IO.socket(URI(url.trimEnd('/')), options)
-            Log.d(LOG_TAG, "connecting to $uri")
+            Log.d(LOG_TAG, "connecting to ${redactSocketUriForLog(uri)}")
             attachListeners(s)
             socket = s
             s.connect()
@@ -130,9 +151,34 @@ class IoSocketClient @Inject constructor(
                 else -> arg.toString()
             }
         }
-        val parsed = parser.parse(event, payload)
-        if (!_events.tryEmit(parsed)) {
-            Log.w(LOG_TAG, "event buffer full; dropping event=$event")
+        offerEvent(parser.parse(event, payload), eventNameForLog = event)
+    }
+
+    /**
+     * Offers a parsed event the same way the socket thread does. Package-visible for overflow
+     * unit tests (tiny [eventBufferCapacity]).
+     *
+     * @return true if buffered / delivered; false if dropped (reconcile scheduled).
+     */
+    internal fun offerEvent(event: SocketEvent, eventNameForLog: String = event.toString()): Boolean {
+        if (_events.tryEmit(event)) return true
+        Log.w(LOG_TAG, "event buffer full; dropping event=$eventNameForLog; scheduling reconcile")
+        scheduleOverflowReconcile()
+        return false
+    }
+
+    private fun scheduleOverflowReconcile() {
+        if (!overflowReconcilePending.compareAndSet(false, true)) return
+        scope.launch {
+            try {
+                onReconnect.onReconnect()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "overflow reconcile failed", e)
+            } finally {
+                overflowReconcilePending.set(false)
+            }
         }
     }
 
@@ -142,6 +188,7 @@ class IoSocketClient @Inject constructor(
         /**
          * Extra buffer slots on [_events]. Sized for a short burst during collector startup or a
          * brief Main-thread stall without dropping; bounds memory if the collector stalls longer.
+         * Drops trigger a debounced reconcile — see class KDoc.
          */
         const val EVENT_BUFFER_CAPACITY = 64
 
