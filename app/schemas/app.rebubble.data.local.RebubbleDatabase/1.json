@@ -1,0 +1,378 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "8bb025e7722809f53f1cab6eaf06ca1d",
+    "entities": [
+      {
+        "tableName": "chats",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`guid` TEXT NOT NULL, `style` INTEGER NOT NULL, `chatIdentifier` TEXT, `displayName` TEXT, `isArchived` INTEGER NOT NULL, `lastMessageDate` INTEGER, `lastMessagePreview` TEXT, PRIMARY KEY(`guid`))",
+        "fields": [
+          {
+            "fieldPath": "guid",
+            "columnName": "guid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "style",
+            "columnName": "style",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatIdentifier",
+            "columnName": "chatIdentifier",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isArchived",
+            "columnName": "isArchived",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastMessageDate",
+            "columnName": "lastMessageDate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastMessagePreview",
+            "columnName": "lastMessagePreview",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "guid"
+          ]
+        }
+      },
+      {
+        "tableName": "messages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`guid` TEXT NOT NULL, `chatGuid` TEXT NOT NULL, `originalRowId` INTEGER, `text` TEXT, `subject` TEXT, `isFromMe` INTEGER NOT NULL, `senderAddress` TEXT, `dateCreated` INTEGER NOT NULL, `dateRead` INTEGER, `dateDelivered` INTEGER, `error` INTEGER NOT NULL, `itemType` INTEGER NOT NULL, `groupActionType` INTEGER NOT NULL, `groupTitle` TEXT, `associatedMessageGuid` TEXT, `associatedMessageType` TEXT, `threadOriginatorGuid` TEXT, `expressiveSendStyleId` TEXT, `dateEdited` INTEGER, `dateRetracted` INTEGER, `sendStatus` TEXT NOT NULL, PRIMARY KEY(`guid`))",
+        "fields": [
+          {
+            "fieldPath": "guid",
+            "columnName": "guid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatGuid",
+            "columnName": "chatGuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalRowId",
+            "columnName": "originalRowId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "subject",
+            "columnName": "subject",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isFromMe",
+            "columnName": "isFromMe",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senderAddress",
+            "columnName": "senderAddress",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dateCreated",
+            "columnName": "dateCreated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateRead",
+            "columnName": "dateRead",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dateDelivered",
+            "columnName": "dateDelivered",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "error",
+            "columnName": "error",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemType",
+            "columnName": "itemType",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupActionType",
+            "columnName": "groupActionType",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupTitle",
+            "columnName": "groupTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "associatedMessageGuid",
+            "columnName": "associatedMessageGuid",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "associatedMessageType",
+            "columnName": "associatedMessageType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "threadOriginatorGuid",
+            "columnName": "threadOriginatorGuid",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "expressiveSendStyleId",
+            "columnName": "expressiveSendStyleId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dateEdited",
+            "columnName": "dateEdited",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dateRetracted",
+            "columnName": "dateRetracted",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sendStatus",
+            "columnName": "sendStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "guid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_messages_chatGuid_dateCreated",
+            "unique": false,
+            "columnNames": [
+              "chatGuid",
+              "dateCreated"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_messages_chatGuid_dateCreated` ON `${TABLE_NAME}` (`chatGuid`, `dateCreated`)"
+          },
+          {
+            "name": "index_messages_originalRowId",
+            "unique": false,
+            "columnNames": [
+              "originalRowId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_messages_originalRowId` ON `${TABLE_NAME}` (`originalRowId`)"
+          },
+          {
+            "name": "index_messages_threadOriginatorGuid",
+            "unique": false,
+            "columnNames": [
+              "threadOriginatorGuid"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_messages_threadOriginatorGuid` ON `${TABLE_NAME}` (`threadOriginatorGuid`)"
+          }
+        ]
+      },
+      {
+        "tableName": "attachments",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`guid` TEXT NOT NULL, `messageGuid` TEXT NOT NULL, `uti` TEXT, `mimeType` TEXT, `transferName` TEXT, `totalBytes` INTEGER, `width` INTEGER, `height` INTEGER, `hasLivePhoto` INTEGER NOT NULL, `localPath` TEXT, `downloadState` TEXT NOT NULL, PRIMARY KEY(`guid`))",
+        "fields": [
+          {
+            "fieldPath": "guid",
+            "columnName": "guid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "messageGuid",
+            "columnName": "messageGuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uti",
+            "columnName": "uti",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mimeType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "transferName",
+            "columnName": "transferName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "totalBytes",
+            "columnName": "totalBytes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "width",
+            "columnName": "width",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "height",
+            "columnName": "height",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "hasLivePhoto",
+            "columnName": "hasLivePhoto",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localPath",
+            "columnName": "localPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "downloadState",
+            "columnName": "downloadState",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "guid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_attachments_messageGuid",
+            "unique": false,
+            "columnNames": [
+              "messageGuid"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_attachments_messageGuid` ON `${TABLE_NAME}` (`messageGuid`)"
+          }
+        ]
+      },
+      {
+        "tableName": "handles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`address` TEXT NOT NULL, `service` TEXT NOT NULL, PRIMARY KEY(`address`, `service`))",
+        "fields": [
+          {
+            "fieldPath": "address",
+            "columnName": "address",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "service",
+            "columnName": "service",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "address",
+            "service"
+          ]
+        }
+      },
+      {
+        "tableName": "chat_handles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`chatGuid` TEXT NOT NULL, `address` TEXT NOT NULL, PRIMARY KEY(`chatGuid`, `address`))",
+        "fields": [
+          {
+            "fieldPath": "chatGuid",
+            "columnName": "chatGuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "address",
+            "columnName": "address",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "chatGuid",
+            "address"
+          ]
+        }
+      },
+      {
+        "tableName": "contacts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`address` TEXT NOT NULL, `displayName` TEXT, `avatarPath` TEXT, PRIMARY KEY(`address`))",
+        "fields": [
+          {
+            "fieldPath": "address",
+            "columnName": "address",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "avatarPath",
+            "columnName": "avatarPath",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "address"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8bb025e7722809f53f1cab6eaf06ca1d')"
+    ]
+  }
+}
