@@ -26,9 +26,12 @@ import kotlinx.serialization.Serializable
  * includeMessages:true}})` embeds the chat's just-sent message(s) directly on the chat object
  * (there is no separate top-level `messages` field in that response -- `data` IS this DTO).
  * `create()` also re-injects the request's `tempGuid` onto each entry (line 230:
- * `i.tempGuid = tempGuid`) before responding, mirroring `MessageDto.tempGuid`'s doc. `null` (not
- * empty) on every other endpoint that returns a `ChatDto`, since `includeMessages` defaults false
- * there.
+ * `i.tempGuid = tempGuid`) before responding, mirroring `MessageDto.tempGuid`'s doc. NOTE: other
+ * endpoints are NOT uniformly null — any caller that requests messages gets an empty-or-populated
+ * list; the reconciler's `POST /chat/query` with `with=lastMessage` sets
+ * `includeMessages = withLastMessage` (chatInterface.ts:65), so those responses carry
+ * `messages: []` (present, empty). Nothing on that path reads this field; keep it that way unless
+ * the reconciler is deliberately taught to consume it.
  */
 @Serializable
 data class ChatDto(

@@ -118,12 +118,18 @@ class ChatRepository @Inject constructor(
         message: String,
         service: String = "iMessage",
     ): String {
+        // tempGuid arms the server's in-flight sendCache guard: a retry while the original
+        // create is still processing (its poll runs up to 30s) is rejected with 400 "already
+        // queued" instead of creating a duplicate message. Completed creates are not deduped
+        // (same in-flight-only semantics as /message/text).
+        val tempGuid = "temp-chat-" + java.util.UUID.randomUUID().toString().replace("-", "").take(8).lowercase()
         val chat = apiCall {
             api.createChat(
                 CreateChatRequest(
                     addresses = addresses,
                     message = message,
                     service = service,
+                    tempGuid = tempGuid,
                 )
             )
         }

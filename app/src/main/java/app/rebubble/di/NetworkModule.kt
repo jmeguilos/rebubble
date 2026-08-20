@@ -49,6 +49,10 @@ object NetworkModule {
     ): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(baseUrlInterceptor)
         .addInterceptor(guidAuthInterceptor)
+        // The server's chat-create path polls for up to 30s before responding
+        // (chatInterface.ts maxWaitMs); OkHttp's default 10s read timeout would make the
+        // client give up on an operation that is still succeeding server-side.
+        .readTimeout(java.time.Duration.ofSeconds(45))
         .build()
 
     @Provides

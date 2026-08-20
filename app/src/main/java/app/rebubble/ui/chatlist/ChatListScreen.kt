@@ -50,6 +50,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -293,7 +295,10 @@ private fun StartChatFab(
         onClick = onClick,
         modifier = modifier
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(end = 4.dp, bottom = 4.dp),
+            .padding(end = 4.dp, bottom = 4.dp)
+            // Explicit semantics: the merged text was observed missing from the a11y tree on
+            // device (unlabeled for TalkBack and undiscoverable by UI tests).
+            .semantics { contentDescription = "Start chat" },
         shape = StartChatFabShape,
         containerColor = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
