@@ -1,6 +1,13 @@
 <!-- @dsCard group="Screens" -->
 <!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20..48,100..700,0..1&display=block" rel="stylesheet">
+<style>
+.ms { font-family:'Material Symbols Rounded'; font-weight:normal; font-style:normal; display:inline-flex; line-height:1;
+      letter-spacing:normal; text-transform:none; white-space:nowrap; direction:ltr; -webkit-font-smoothing:antialiased;
+      font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 24; user-select:none; }
+.ms.fill { font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24; }
+</style>
 <style>
 /* Rebubble design tokens v2 — M3 baseline neutrals + ultramarine brand + semantic bubble colors.
    Surface ladder follows M3: surface < container-low < container < container-high < container-highest. */
@@ -78,19 +85,19 @@ body { font-family: var(--font-body); color: var(--on-surface); -webkit-font-smo
 </style></head><body>
 
 <div class="phone">
-  <div class="status"><span>9:41</span><span>▲▮</span></div>
+  <div class="status"><span>9:41</span><span style="display:flex;gap:5px;align-items:center"><span class="ms" style="font-size:15px">signal_cellular_alt</span><span class="ms" style="font-size:15px">wifi</span><span class="ms fill" style="font-size:15px">battery_full</span></span></div>
   <div class="header"><div class="wordmark">Rebubble</div></div>
-  <div class="search">⌕<div class="grow">Search conversations</div><div class="me">J</div></div>
+  <div class="search"><span class="ms" style="font-size:22px">search</span><div class="grow">Search conversations</div><div class="me">J</div></div>
   <div class="chips"><div class="chip on">All</div><div class="chip">Unread</div><div class="chip">Groups</div></div>
   <div class="sheet">
     <div class="row unread">
       <div class="avatar" style="background:var(--av1-bg);color:var(--av1-fg)">M</div>
-      <div class="mid"><div class="title">Maya Chen</div><div class="preview">On my way — ten minutes 🏃‍♀️</div></div>
+      <div class="mid"><div class="title">Maya Chen</div><div class="preview">On my way — ten minutes</div></div>
       <div class="end"><div class="ts">now</div><div class="badge">2</div></div>
     </div>
     <div class="row">
-      <div class="avatar" style="background:var(--av3-bg);color:var(--av3-fg)">🎿</div>
-      <div class="mid"><div class="title">Ski trip 2026</div><div class="preview">Alex: lift tickets are booked!</div></div>
+      <div class="avatar" style="background:var(--av3-bg);color:var(--av3-fg)"><span class="ms" style="font-size:26px">group</span></div>
+      <div class="mid"><div class="title">Ski trip 2026</div><div class="preview">Alex: lift tickets are booked</div></div>
       <div class="end"><div class="ts">14:32</div></div>
     </div>
     <div class="row">
@@ -100,32 +107,32 @@ body { font-family: var(--font-body); color: var(--on-surface); -webkit-font-smo
     </div>
     <div class="row">
       <div class="avatar" style="background:var(--av6-bg);color:var(--av6-fg)">S</div>
-      <div class="mid"><div class="title">Sam Alvarez</div><div class="preview">The photos from Saturday 📸</div></div>
+      <div class="mid"><div class="title">Sam Alvarez</div><div class="preview">You: see you at the trailhead</div></div>
       <div class="end"><div class="ts">Mon</div></div>
     </div>
     <div class="row">
-      <div class="avatar" style="background:var(--surface-container-highest);color:var(--on-surface-variant)">👤</div>
+      <div class="avatar" style="background:var(--surface-container-highest);color:var(--on-surface-variant)"><span class="ms" style="font-size:26px">person</span></div>
       <div class="mid"><div class="title">+1 555 010 0001</div><div class="preview">Your package was delivered</div></div>
       <div class="end"><div class="ts">Jul 14</div></div>
     </div>
   </div>
-  <div class="fab">✏️ Compose</div>
+  <div class="fab"><span class="ms" style="font-size:20px">chat</span>Start chat</div>
 </div>
 
 <div class="phone dark">
-  <div class="status"><span>9:41</span><span>▲▮</span></div>
+  <div class="status"><span>9:41</span><span style="display:flex;gap:5px;align-items:center"><span class="ms" style="font-size:15px">signal_cellular_alt</span><span class="ms" style="font-size:15px">wifi</span><span class="ms fill" style="font-size:15px">battery_full</span></span></div>
   <div class="header"><div class="wordmark">Rebubble</div></div>
-  <div class="search">⌕<div class="grow">Search conversations</div><div class="me">J</div></div>
+  <div class="search"><span class="ms" style="font-size:22px">search</span><div class="grow">Search conversations</div><div class="me">J</div></div>
   <div class="chips"><div class="chip on">All</div><div class="chip">Unread</div><div class="chip">Groups</div></div>
   <div class="sheet">
     <div class="row unread">
       <div class="avatar" style="background:var(--av1-bg);color:var(--av1-fg)">M</div>
-      <div class="mid"><div class="title">Maya Chen</div><div class="preview">On my way — ten minutes 🏃‍♀️</div></div>
+      <div class="mid"><div class="title">Maya Chen</div><div class="preview">On my way — ten minutes</div></div>
       <div class="end"><div class="ts">now</div><div class="badge">2</div></div>
     </div>
     <div class="row">
-      <div class="avatar" style="background:var(--av3-bg);color:var(--av3-fg)">🎿</div>
-      <div class="mid"><div class="title">Ski trip 2026</div><div class="preview">Alex: lift tickets are booked!</div></div>
+      <div class="avatar" style="background:var(--av3-bg);color:var(--av3-fg)"><span class="ms" style="font-size:26px">group</span></div>
+      <div class="mid"><div class="title">Ski trip 2026</div><div class="preview">Alex: lift tickets are booked</div></div>
       <div class="end"><div class="ts">14:32</div></div>
     </div>
     <div class="row">
@@ -134,6 +141,6 @@ body { font-family: var(--font-body); color: var(--on-surface); -webkit-font-smo
       <div class="end"><div class="ts">Tue</div></div>
     </div>
   </div>
-  <div class="fab">✏️ Compose</div>
+  <div class="fab"><span class="ms" style="font-size:20px">chat</span>Start chat</div>
 </div>
 </body></html>

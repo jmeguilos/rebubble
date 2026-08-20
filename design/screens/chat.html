@@ -1,6 +1,13 @@
 <!-- @dsCard group="Screens" -->
 <!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20..48,100..700,0..1&display=block" rel="stylesheet">
+<style>
+.ms { font-family:'Material Symbols Rounded'; font-weight:normal; font-style:normal; display:inline-flex; line-height:1;
+      letter-spacing:normal; text-transform:none; white-space:nowrap; direction:ltr; -webkit-font-smoothing:antialiased;
+      font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 24; user-select:none; }
+.ms.fill { font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24; }
+</style>
 <style>
 /* Rebubble design tokens v2 — M3 baseline neutrals + ultramarine brand + semantic bubble colors.
    Surface ladder follows M3: surface < container-low < container < container-high < container-highest. */
@@ -76,21 +83,21 @@ body { font-family: var(--font-body); color: var(--on-surface); -webkit-font-smo
   .send { width:44px; height:44px; }
 </style></head><body>
 <div class="phone">
-  <div class="status"><span>9:41</span><span>▲ ▮</span></div>
+  <div class="status"><span>9:41</span><span style="display:flex;gap:5px;align-items:center"><span class="ms" style="font-size:15px">signal_cellular_alt</span><span class="ms" style="font-size:15px">wifi</span><span class="ms fill" style="font-size:15px">battery_full</span></span></div>
   <div class="appbar">
-    <div class="iconbtn">←</div>
+    <div class="iconbtn"><span class="ms" style="font-size:24px">arrow_back</span></div>
     <div class="center"><div class="avatar">M</div><div class="name">Maya Chen</div></div>
-    <div class="iconbtn">⋮</div>
+    <div class="iconbtn"><span class="ms" style="font-size:24px">more_vert</span></div>
   </div>
   <div class="sheet">
     <div class="day">Today</div>
     <div class="bubble in">Are you coming tonight?</div>
-    <div class="bubble in last">We're starting at 7 🍕</div>
+    <div class="bubble in last">We're starting at 7</div>
     <div class="gap"></div>
     <div class="bubble out">Yes! Leaving soon</div>
     <div class="bubble out last">Save me a slice</div>
     <div class="micro">Delivered</div>
   </div>
-  <div class="composerwrap"><div class="plus">+</div><div class="field">Message</div><div class="send"></div></div>
+  <div class="composerwrap"><div class="plus"><span class="ms" style="font-size:24px">add</span></div><div class="field">Message</div><div class="send"></div></div>
 </div>
 </body></html>

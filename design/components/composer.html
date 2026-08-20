@@ -1,6 +1,13 @@
 <!-- @dsCard group="Components" -->
 <!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20..48,100..700,0..1&display=block" rel="stylesheet">
+<style>
+.ms { font-family:'Material Symbols Rounded'; font-weight:normal; font-style:normal; display:inline-flex; line-height:1;
+      letter-spacing:normal; text-transform:none; white-space:nowrap; direction:ltr; -webkit-font-smoothing:antialiased;
+      font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 24; user-select:none; }
+.ms.fill { font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24; }
+</style>
 <style>
 /* Rebubble design tokens v2 — M3 baseline neutrals + ultramarine brand + semantic bubble colors.
    Surface ladder follows M3: surface < container-low < container < container-high < container-highest. */
@@ -57,11 +64,11 @@ body { font-family: var(--font-body); color: var(--on-surface); -webkit-font-smo
   .note { font-size: 11px; color: var(--on-surface-variant); margin-top: 18px; }
 </style></head><body>
 <div class="label">Empty — send slot reserved (no layout shift)</div>
-<div class="composer"><div class="plus">+</div><div class="field">Message</div><div class="send idle"></div></div>
+<div class="composer"><div class="plus"><span class="ms" style="font-size:24px">add</span></div><div class="field">Message</div><div class="send idle"></div></div>
 <div class="label">With text — filled circular send</div>
-<div class="composer"><div class="plus">+</div><div class="field"><span class="text">Leaving now, see you at 7</span></div>
+<div class="composer"><div class="plus"><span class="ms" style="font-size:24px">add</span></div><div class="field"><span class="text">Leaving now, see you at 7</span></div>
   <div class="send active"><svg viewBox="0 0 24 24"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg></div></div>
 <div class="label">SMS chat — placeholder signals the service</div>
-<div class="composer"><div class="plus">+</div><div class="field">Text message</div><div class="send idle"></div></div>
+<div class="composer"><div class="plus"><span class="ms" style="font-size:24px">add</span></div><div class="field">Text message</div><div class="send idle"></div></div>
 <p class="note">44dp tonal plus (photo picker) · 24dp-radius pill field · 44dp primary send, slot always reserved. Composer sits on the tonal layer below the thread sheet.</p>
 </body></html>
