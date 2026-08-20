@@ -1,48 +1,139 @@
 <!-- @dsCard group="Screens" -->
 <!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../_tokens.css">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  body { display: flex; gap: 28px; padding: 24px; justify-content: center; background: #fff; }
-  .phone { width: 390px; height: 780px; border-radius: 32px; overflow: hidden; background: var(--surface-container);
-           box-shadow: 0 4px 24px rgba(0,0,0,.12); display: flex; flex-direction: column; }
-  .phone.dark { --primary:#B9C3FF; --on-primary:#00184A; --primary-container:#1E3163; --on-primary-container:#DDE1FF;
-    --surface:#131318; --surface-container:#1F1F25; --surface-container-high:#29282F;
-    --on-surface:#E4E1E9; --on-surface-variant:#C7C5D0; background: var(--surface-container); color: var(--on-surface); }
-  .status { height: 34px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 500; }
-  .header { display: flex; justify-content: space-between; align-items: center; padding: 8px 20px 14px; }
-  .wordmark { font-family: var(--font-display); font-weight: 600; font-size: 26px; }
-  .gear { width: 34px; height: 34px; border-radius: 50%; background: var(--surface-container-high); display: flex; align-items: center; justify-content: center; font-size: 16px; }
-  .search { margin: 0 16px 14px; height: 52px; border-radius: 26px; background: var(--surface-container-high);
-            display: flex; align-items: center; gap: 12px; padding: 0 18px; color: var(--on-surface-variant); font-size: 16px; }
-  .sheet { flex: 1; background: var(--surface); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; padding: 10px 4px; }
-  .row { display: flex; align-items: center; gap: 14px; padding: 10px 16px; min-height: 74px; }
-  .avatar { width: 54px; height: 54px; border-radius: 50%; background: var(--primary-container); color: var(--on-primary-container);
-            display:flex; align-items:center; justify-content:center; font-weight:500; font-size:19px; flex-shrink:0; }
-  .mid { flex:1; min-width:0 } .title { font-size:16px; font-weight:500; } .preview { font-size:14px; color:var(--on-surface-variant); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .end { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
-  .ts { font-size:12px; font-weight:500; color:var(--on-surface-variant) } .dot { width:10px;height:10px;border-radius:50%;background:var(--primary) }
-  .unread .title, .unread .preview { font-weight:700; color:var(--on-surface) }
+/* Rebubble design tokens v2 — M3 baseline neutrals + ultramarine brand + semantic bubble colors.
+   Surface ladder follows M3: surface < container-low < container < container-high < container-highest. */
+:root {
+  /* brand */
+  --primary: #2D4FE0; --on-primary: #FFFFFF;
+  --primary-container: #DCE1FF; --on-primary-container: #00105C;
+  --secondary-container: #DFE1F9; --on-secondary-container: #171B2C;
+  /* M3 baseline neutrals (lavender-tinted) */
+  --surface: #FEF7FF; --surface-container-low: #F7F2FA; --surface-container: #F3EDF7;
+  --surface-container-high: #ECE6F0; --surface-container-highest: #E6E0E9;
+  --on-surface: #1D1B20; --on-surface-variant: #49454F; --outline-variant: #CAC4D0;
+  --error: #B3261E; --error-container: #F9DEDC; --on-error-container: #410E0B;
+  /* semantics — never themed */
+  --imessage: #0A7CFF; --sms: #34C759; --on-bubble: #FFFFFF;
+  --incoming: #ECE6F0; --on-incoming: #1D1B20;
+  /* shape scale */
+  --radius-sheet: 28px; --radius-bubble: 20px; --radius-tight: 5px; --radius-chip: 8px;
+  --font-display: "Manrope", system-ui, sans-serif;
+  --font-body: "Roboto", system-ui, sans-serif;
+  /* per-contact avatar hues (cycle by contact hash) — M3 tone-90 bg / tone-10 fg */
+  --av1-bg:#FFD9E2; --av1-fg:#3E001D;  --av2-bg:#DCE1FF; --av2-fg:#001159;
+  --av3-bg:#B2EBE4; --av3-fg:#00201C;  --av4-bg:#FFDF9E; --av4-fg:#261A00;
+  --av5-bg:#EADDFF; --av5-fg:#21005D;  --av6-bg:#C4EED0; --av6-fg:#002110;
+}
+.dark {
+  --primary: #B9C3FF; --on-primary: #00184A;
+  --primary-container: #1E3163; --on-primary-container: #DCE1FF;
+  --secondary-container: #434659; --on-secondary-container: #DFE1F9;
+  --surface: #141218; --surface-container-low: #1D1B20; --surface-container: #211F26;
+  --surface-container-high: #2B292F; --surface-container-highest: #36343B;
+  --on-surface: #E6E0E9; --on-surface-variant: #CAC4D0; --outline-variant: #49454F;
+  --error: #F2B8B5; --error-container: #8C1D18; --on-error-container: #F9DEDC;
+  --incoming: #2B292F; --on-incoming: #E6E0E9;
+  --av1-bg:#5D1133; --av1-fg:#FFD9E2;  --av2-bg:#16307E; --av2-fg:#DCE1FF;
+  --av3-bg:#00504A; --av3-fg:#B2EBE4;  --av4-bg:#5C4300; --av4-fg:#FFDF9E;
+  --av5-bg:#4A2F87; --av5-fg:#EADDFF;  --av6-bg:#0E5223; --av6-fg:#C4EED0;
+}
+* { margin: 0; box-sizing: border-box; }
+body { font-family: var(--font-body); color: var(--on-surface); -webkit-font-smoothing: antialiased; }
+
+</style>
+<style>
+  body { display:flex; gap:32px; padding:28px; justify-content:center; background:#fff; }
+  .phone { width:392px; height:800px; border-radius:34px; overflow:hidden; background:var(--surface-container);
+           box-shadow:0 6px 32px rgba(0,0,0,.14); display:flex; flex-direction:column; }
+  .phone.dark { background:var(--surface-container); color:var(--on-surface); }
+  .status { height:38px; display:flex; justify-content:space-between; align-items:center; padding:0 24px; font-size:14px; font-weight:500; }
+  .header { padding:6px 20px 12px; display:flex; align-items:center; justify-content:space-between; }
+  .wordmark { font-family:var(--font-display); font-weight:700; font-size:24px; letter-spacing:-.2px; }
+  .search { margin:0 16px; height:52px; border-radius:26px; background:var(--surface-container-high);
+            display:flex; align-items:center; padding:0 8px 0 18px; color:var(--on-surface-variant); font-size:15px; gap:12px; }
+  .search .grow { flex:1; }
+  .search .me { width:36px; height:36px; border-radius:50%; background:var(--av4-bg); color:var(--av4-fg);
+                display:flex; align-items:center; justify-content:center; font-weight:600; font-size:15px; }
+  .chips { display:flex; gap:8px; padding:12px 16px 14px; }
+  .chip { height:32px; padding:0 14px; border-radius:var(--radius-chip); display:flex; align-items:center; font-size:14px; font-weight:500;
+          border:1px solid var(--outline-variant); color:var(--on-surface-variant); background:transparent; }
+  .chip.on { background:var(--secondary-container); color:var(--on-secondary-container); border-color:transparent; }
+  .sheet { flex:1; background:var(--surface); border-radius:var(--radius-sheet) var(--radius-sheet) 0 0; padding:12px 4px; }
+  .row { display:flex; align-items:center; gap:16px; padding:10px 18px; min-height:78px; }
+  .avatar { width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+            font-weight:600; font-size:22px; flex-shrink:0; font-family:var(--font-display); }
+  .mid { flex:1; min-width:0; } .title { font-size:16px; font-weight:500; letter-spacing:.1px; }
+  .preview { font-size:14px; color:var(--on-surface-variant); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .end { display:flex; flex-direction:column; align-items:flex-end; gap:7px; flex-shrink:0; }
+  .ts { font-size:12px; font-weight:500; color:var(--on-surface-variant); }
+  .unread .title { font-weight:700; } .unread .preview { font-weight:600; color:var(--on-surface); }
+  .unread .ts { color:var(--primary); font-weight:600; }
+  .badge { min-width:20px; height:20px; border-radius:10px; background:var(--primary); color:var(--on-primary);
+           font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; padding:0 6px; }
+  .fab { position:relative; margin:-84px 20px 20px auto; width:120px; height:56px; border-radius:18px; background:var(--primary-container);
+         color:var(--on-primary-container); display:flex; align-items:center; justify-content:center; gap:8px; font-weight:600; font-size:15px;
+         box-shadow:0 3px 12px rgba(0,0,0,.18); }
 </style></head><body>
+
 <div class="phone">
-  <div class="status"><span>9:41</span><span>▲ ▮</span></div>
-  <div class="header"><div class="wordmark">Rebubble</div><div class="gear">⚙</div></div>
-  <div class="search">🔍 Search conversations</div>
+  <div class="status"><span>9:41</span><span>▲▮</span></div>
+  <div class="header"><div class="wordmark">Rebubble</div></div>
+  <div class="search">⌕<div class="grow">Search conversations</div><div class="me">J</div></div>
+  <div class="chips"><div class="chip on">All</div><div class="chip">Unread</div><div class="chip">Groups</div></div>
   <div class="sheet">
-    <div class="row unread"><div class="avatar">M</div><div class="mid"><div class="title">Maya Chen</div><div class="preview">On my way — ten minutes</div></div><div class="end"><div class="ts">now</div><div class="dot"></div></div></div>
-    <div class="row"><div class="avatar">👥</div><div class="mid"><div class="title">Ski trip 2026</div><div class="preview">Alex: lift tickets are booked 🎿</div></div><div class="end"><div class="ts">14:32</div></div></div>
-    <div class="row"><div class="avatar">D</div><div class="mid"><div class="title">Dad</div><div class="preview">You: happy birthday!! 🎂</div></div><div class="end"><div class="ts">Tue</div></div></div>
-    <div class="row"><div class="avatar">👤</div><div class="mid"><div class="title">+1 555 010 0001</div><div class="preview">Your package was delivered</div></div><div class="end"><div class="ts">Jul 14</div></div></div>
+    <div class="row unread">
+      <div class="avatar" style="background:var(--av1-bg);color:var(--av1-fg)">M</div>
+      <div class="mid"><div class="title">Maya Chen</div><div class="preview">On my way — ten minutes 🏃‍♀️</div></div>
+      <div class="end"><div class="ts">now</div><div class="badge">2</div></div>
+    </div>
+    <div class="row">
+      <div class="avatar" style="background:var(--av3-bg);color:var(--av3-fg)">🎿</div>
+      <div class="mid"><div class="title">Ski trip 2026</div><div class="preview">Alex: lift tickets are booked!</div></div>
+      <div class="end"><div class="ts">14:32</div></div>
+    </div>
+    <div class="row">
+      <div class="avatar" style="background:var(--av5-bg);color:var(--av5-fg)">D</div>
+      <div class="mid"><div class="title">Dad</div><div class="preview">You: happy birthday!! 🎂</div></div>
+      <div class="end"><div class="ts">Tue</div></div>
+    </div>
+    <div class="row">
+      <div class="avatar" style="background:var(--av6-bg);color:var(--av6-fg)">S</div>
+      <div class="mid"><div class="title">Sam Alvarez</div><div class="preview">The photos from Saturday 📸</div></div>
+      <div class="end"><div class="ts">Mon</div></div>
+    </div>
+    <div class="row">
+      <div class="avatar" style="background:var(--surface-container-highest);color:var(--on-surface-variant)">👤</div>
+      <div class="mid"><div class="title">+1 555 010 0001</div><div class="preview">Your package was delivered</div></div>
+      <div class="end"><div class="ts">Jul 14</div></div>
+    </div>
   </div>
+  <div class="fab">✏️ Compose</div>
 </div>
+
 <div class="phone dark">
-  <div class="status"><span>9:41</span><span>▲ ▮</span></div>
-  <div class="header"><div class="wordmark">Rebubble</div><div class="gear">⚙</div></div>
-  <div class="search">🔍 Search conversations</div>
+  <div class="status"><span>9:41</span><span>▲▮</span></div>
+  <div class="header"><div class="wordmark">Rebubble</div></div>
+  <div class="search">⌕<div class="grow">Search conversations</div><div class="me">J</div></div>
+  <div class="chips"><div class="chip on">All</div><div class="chip">Unread</div><div class="chip">Groups</div></div>
   <div class="sheet">
-    <div class="row unread"><div class="avatar">M</div><div class="mid"><div class="title">Maya Chen</div><div class="preview">On my way — ten minutes</div></div><div class="end"><div class="ts">now</div><div class="dot"></div></div></div>
-    <div class="row"><div class="avatar">👥</div><div class="mid"><div class="title">Ski trip 2026</div><div class="preview">Alex: lift tickets are booked 🎿</div></div><div class="end"><div class="ts">14:32</div></div></div>
-    <div class="row"><div class="avatar">D</div><div class="mid"><div class="title">Dad</div><div class="preview">You: happy birthday!! 🎂</div></div><div class="end"><div class="ts">Tue</div></div></div>
+    <div class="row unread">
+      <div class="avatar" style="background:var(--av1-bg);color:var(--av1-fg)">M</div>
+      <div class="mid"><div class="title">Maya Chen</div><div class="preview">On my way — ten minutes 🏃‍♀️</div></div>
+      <div class="end"><div class="ts">now</div><div class="badge">2</div></div>
+    </div>
+    <div class="row">
+      <div class="avatar" style="background:var(--av3-bg);color:var(--av3-fg)">🎿</div>
+      <div class="mid"><div class="title">Ski trip 2026</div><div class="preview">Alex: lift tickets are booked!</div></div>
+      <div class="end"><div class="ts">14:32</div></div>
+    </div>
+    <div class="row">
+      <div class="avatar" style="background:var(--av5-bg);color:var(--av5-fg)">D</div>
+      <div class="mid"><div class="title">Dad</div><div class="preview">You: happy birthday!! 🎂</div></div>
+      <div class="end"><div class="ts">Tue</div></div>
+    </div>
   </div>
+  <div class="fab">✏️ Compose</div>
 </div>
 </body></html>

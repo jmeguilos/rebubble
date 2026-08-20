@@ -1,7 +1,48 @@
 <!-- @dsCard group="Screens" -->
 <!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../_tokens.css">
+<style>
+/* Rebubble design tokens v2 — M3 baseline neutrals + ultramarine brand + semantic bubble colors.
+   Surface ladder follows M3: surface < container-low < container < container-high < container-highest. */
+:root {
+  /* brand */
+  --primary: #2D4FE0; --on-primary: #FFFFFF;
+  --primary-container: #DCE1FF; --on-primary-container: #00105C;
+  --secondary-container: #DFE1F9; --on-secondary-container: #171B2C;
+  /* M3 baseline neutrals (lavender-tinted) */
+  --surface: #FEF7FF; --surface-container-low: #F7F2FA; --surface-container: #F3EDF7;
+  --surface-container-high: #ECE6F0; --surface-container-highest: #E6E0E9;
+  --on-surface: #1D1B20; --on-surface-variant: #49454F; --outline-variant: #CAC4D0;
+  --error: #B3261E; --error-container: #F9DEDC; --on-error-container: #410E0B;
+  /* semantics — never themed */
+  --imessage: #0A7CFF; --sms: #34C759; --on-bubble: #FFFFFF;
+  --incoming: #ECE6F0; --on-incoming: #1D1B20;
+  /* shape scale */
+  --radius-sheet: 28px; --radius-bubble: 20px; --radius-tight: 5px; --radius-chip: 8px;
+  --font-display: "Manrope", system-ui, sans-serif;
+  --font-body: "Roboto", system-ui, sans-serif;
+  /* per-contact avatar hues (cycle by contact hash) — M3 tone-90 bg / tone-10 fg */
+  --av1-bg:#FFD9E2; --av1-fg:#3E001D;  --av2-bg:#DCE1FF; --av2-fg:#001159;
+  --av3-bg:#B2EBE4; --av3-fg:#00201C;  --av4-bg:#FFDF9E; --av4-fg:#261A00;
+  --av5-bg:#EADDFF; --av5-fg:#21005D;  --av6-bg:#C4EED0; --av6-fg:#002110;
+}
+.dark {
+  --primary: #B9C3FF; --on-primary: #00184A;
+  --primary-container: #1E3163; --on-primary-container: #DCE1FF;
+  --secondary-container: #434659; --on-secondary-container: #DFE1F9;
+  --surface: #141218; --surface-container-low: #1D1B20; --surface-container: #211F26;
+  --surface-container-high: #2B292F; --surface-container-highest: #36343B;
+  --on-surface: #E6E0E9; --on-surface-variant: #CAC4D0; --outline-variant: #49454F;
+  --error: #F2B8B5; --error-container: #8C1D18; --on-error-container: #F9DEDC;
+  --incoming: #2B292F; --on-incoming: #E6E0E9;
+  --av1-bg:#5D1133; --av1-fg:#FFD9E2;  --av2-bg:#16307E; --av2-fg:#DCE1FF;
+  --av3-bg:#00504A; --av3-fg:#B2EBE4;  --av4-bg:#5C4300; --av4-fg:#FFDF9E;
+  --av5-bg:#4A2F87; --av5-fg:#EADDFF;  --av6-bg:#0E5223; --av6-fg:#C4EED0;
+}
+* { margin: 0; box-sizing: border-box; }
+body { font-family: var(--font-body); color: var(--on-surface); -webkit-font-smoothing: antialiased; }
+
+</style>
 <style>
   body { display: flex; gap: 28px; padding: 24px; justify-content: center; background: #fff; }
   .phone { width: 390px; height: 780px; border-radius: 32px; overflow: hidden; background: var(--surface-container);
