@@ -558,4 +558,14 @@ class MessageIngestorTest {
 
             assertEquals(1, unreadCount())
         }
+
+    @Test
+    fun `a backfilled incoming message does not increment the unread count`() =
+        runBlocking {
+            activeChatTracker.current.value = "chat-other" // not suppressed by the tracker
+
+            ingestor.ingest(listOf(messageDto("m1", dateCreated = 1000L)), IngestSource.BACKFILL)
+
+            assertEquals(0, unreadCount())
+        }
 }

@@ -137,7 +137,7 @@ open class MessageIngestor(
                     else -> {
                         messageDao.insertAll(listOf(mapped))
                         inserted += mapped.guid
-                        if (shouldCountAsUnread(mapped, chatGuid)) chatDao.incrementUnread(chatGuid)
+                        if (shouldCountAsUnread(mapped, chatGuid, source)) chatDao.incrementUnread(chatGuid)
                     }
                 }
 
@@ -216,10 +216,14 @@ open class MessageIngestor(
      *  - **own messages** (`isFromMe`) — including the echo of a send that arrived before its ack;
      *  - **reactions** (`associatedMessageType != null`) — they never surface as a list row either;
      *  - **the chat currently on screen** ([ActiveChatTracker.current]) — the user is reading it,
-     *    so it stays at zero exactly like the notification suppression this tracker already drives.
+     *    so it stays at zero exactly like the notification suppression this tracker already drives;
+     *  - **history backfill** ([IngestSource.BACKFILL]) — older messages fetched by scrolling up
+     *    were already "read" in the past; counting them would inflate badges if backfill is ever
+     *    triggered for a chat that is not on screen.
      */
-    private fun shouldCountAsUnread(mapped: MessageEntity, chatGuid: String): Boolean =
-        !mapped.isFromMe &&
+    private fun shouldCountAsUnread(mapped: MessageEntity, chatGuid: String, source: IngestSource): Boolean =
+        source != IngestSource.BACKFILL &&
+            !mapped.isFromMe &&
             mapped.associatedMessageType == null &&
             activeChatTracker.current.value != chatGuid
 
