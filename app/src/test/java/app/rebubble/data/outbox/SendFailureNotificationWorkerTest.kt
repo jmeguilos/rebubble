@@ -24,6 +24,7 @@ import app.rebubble.data.remote.api.testBlueBubblesApi
 import app.rebubble.data.repo.InMemorySecretStore
 import app.rebubble.data.repo.ServerConfigRepository
 import app.rebubble.data.sync.MessageIngestor
+import app.rebubble.notifications.ActiveChatTracker
 import app.rebubble.notifications.MessageNotifier
 import app.rebubble.notifications.NotificationChannels
 import app.rebubble.notifications.SendFailureNotifier
@@ -76,6 +77,7 @@ class SendFailureNotificationWorkerTest {
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = ActiveChatTracker(),
         )
         server = MockWebServer()
         server.start()

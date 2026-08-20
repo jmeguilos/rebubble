@@ -57,4 +57,16 @@ interface ChatDao {
         """
     )
     suspend fun updatePreview(guid: String, date: Long, preview: String?)
+
+    /**
+     * +1 on the local unread counter (schema v2). Called once per *newly inserted* incoming,
+     * non-reaction message, and never while that chat is the one on screen — see
+     * [MessageIngestor.ingest]. A no-op if [guid] doesn't exist (the ingestor always seeds first).
+     */
+    @Query("UPDATE chats SET unreadCount = unreadCount + 1 WHERE guid = :guid")
+    suspend fun incrementUnread(guid: String)
+
+    /** Clear-on-open: zeroes the local unread counter when the conversation is entered. */
+    @Query("UPDATE chats SET unreadCount = 0 WHERE guid = :guid")
+    suspend fun clearUnread(guid: String)
 }

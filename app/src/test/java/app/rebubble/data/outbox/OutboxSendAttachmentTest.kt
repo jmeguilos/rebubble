@@ -15,6 +15,7 @@ import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
 import app.rebubble.data.local.InMemoryDatabaseFactory
 import app.rebubble.data.logging.RingBufferLogger
+import app.rebubble.notifications.ActiveChatTracker
 import app.rebubble.notifications.SendFailureNotifier
 import app.rebubble.data.local.RebubbleDatabase
 import app.rebubble.data.local.entity.ChatEntity
@@ -89,6 +90,7 @@ class OutboxSendAttachmentTest {
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = ActiveChatTracker(),
         )
 
         server = MockWebServer()

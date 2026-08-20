@@ -90,9 +90,17 @@ class ChatViewModel @Inject constructor(
         ),
     )
 
-    /** Screen enter (RESUMED) — activates T15 notification suppression for this chat. */
+    /**
+     * Screen enter (RESUMED) — activates T15 notification suppression for this chat and clears its
+     * unread badge. Marking the tracker first is deliberate: any message ingested between here and
+     * the `clearUnread` write is already suppressed by the tracker, so the count cannot be left
+     * stranded at a value the user never saw.
+     */
     fun onEnter() {
         activeChatTracker.current.value = chatGuid
+        viewModelScope.launch {
+            chatRepository.clearUnread(chatGuid)
+        }
     }
 
     /** Screen exit — clears suppression when this chat was the active one. */

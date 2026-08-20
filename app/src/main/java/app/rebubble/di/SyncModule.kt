@@ -12,6 +12,7 @@ import app.rebubble.data.sync.MessageIngestor
 import app.rebubble.data.sync.NewMessageAlert
 import app.rebubble.data.sync.Reconciler
 import app.rebubble.data.sync.SyncWatermarkStore
+import app.rebubble.notifications.ActiveChatTracker
 import app.rebubble.notifications.MessageNotifier
 import dagger.Binds
 import dagger.Module
@@ -51,7 +52,9 @@ abstract class SyncModule {
             chatDao: ChatDao,
             attachmentDao: AttachmentDao,
             handleDao: HandleDao,
-        ): MessageIngestor = MessageIngestor(db, messageDao, chatDao, attachmentDao, handleDao)
+            activeChatTracker: ActiveChatTracker,
+        ): MessageIngestor =
+            MessageIngestor(db, messageDao, chatDao, attachmentDao, handleDao, activeChatTracker)
 
         @Provides
         @Singleton

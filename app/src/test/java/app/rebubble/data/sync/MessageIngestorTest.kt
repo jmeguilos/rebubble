@@ -11,6 +11,7 @@ import app.rebubble.data.remote.dto.AttachmentDto
 import app.rebubble.data.remote.dto.ChatDto
 import app.rebubble.data.remote.dto.HandleDto
 import app.rebubble.data.remote.dto.MessageDto
+import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -37,16 +38,19 @@ class MessageIngestorTest {
 
     private lateinit var db: RebubbleDatabase
     private lateinit var ingestor: MessageIngestor
+    private lateinit var activeChatTracker: ActiveChatTracker
 
     @Before
     fun setUp() {
         db = InMemoryDatabaseFactory.create()
+        activeChatTracker = ActiveChatTracker()
         ingestor = MessageIngestor(
             db = db,
             messageDao = db.messageDao(),
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = activeChatTracker,
         )
     }
 
@@ -454,4 +458,104 @@ class MessageIngestorTest {
         assertEquals("hello", chat?.lastMessagePreview)
         assertEquals(1000L, chat?.lastMessageDate)
     }
+
+    // --- 13. unread accounting (schema v2) ---------------------------------------------------
+
+    private suspend fun unreadCount(chatGuid: String = "chat-1"): Int =
+        db.chatDao().getByGuid(chatGuid)?.unreadCount ?: -1
+
+    @Test
+    fun `each newly inserted incoming message increments the chat unread count`() = runBlocking {
+        ingestor.ingest(listOf(messageDto("m1", dateCreated = 1000L)), IngestSource.SOCKET)
+        assertEquals(1, unreadCount())
+
+        ingestor.ingest(listOf(messageDto("m2", dateCreated = 2000L)), IngestSource.FCM)
+        assertEquals(2, unreadCount())
+    }
+
+    @Test
+    fun `re-delivering the same message does not double-count it as unread`() = runBlocking {
+        val dto = messageDto("m1", dateCreated = 1000L)
+        ingestor.ingest(listOf(dto), IngestSource.SOCKET)
+        // Same guid arriving again through the reconcile path merges, never inserts.
+        ingestor.ingest(listOf(dto), IngestSource.RECONCILE)
+
+        assertEquals(1, unreadCount())
+    }
+
+    @Test
+    fun `own messages never increment the unread count`() = runBlocking {
+        ingestor.ingest(
+            listOf(messageDto("mine", isFromMe = true, dateCreated = 1000L)),
+            IngestSource.SEND_ACK,
+        )
+
+        assertEquals(0, unreadCount())
+    }
+
+    @Test
+    fun `a temp-guid swap of an own message never increments the unread count`() = runBlocking {
+        db.chatDao().insertIgnore(
+            listOf(
+                ChatEntity(
+                    guid = "chat-1",
+                    style = 45,
+                    chatIdentifier = "+15551234567",
+                    displayName = null,
+                    isArchived = false,
+                    lastMessageDate = null,
+                    lastMessagePreview = null,
+                ),
+            ),
+        )
+        db.messageDao().insertAll(listOf(seedMessage("temp-1", sendStatus = SendStatus.SENDING)))
+
+        ingestor.ingest(
+            listOf(messageDto("real-1", tempGuid = "temp-1", isFromMe = true, dateCreated = 1000L)),
+            IngestSource.SEND_ACK,
+        )
+
+        assertEquals(0, unreadCount())
+    }
+
+    @Test
+    fun `reaction rows never increment the unread count`() = runBlocking {
+        ingestor.ingest(listOf(messageDto("m1", dateCreated = 1000L)), IngestSource.SOCKET)
+        assertEquals(1, unreadCount())
+
+        ingestor.ingest(
+            listOf(
+                messageDto(
+                    "r1",
+                    text = null,
+                    dateCreated = 2000L,
+                    associatedMessageType = "love",
+                    associatedMessageGuid = "m1",
+                ),
+            ),
+            IngestSource.SOCKET,
+        )
+
+        assertEquals(1, unreadCount())
+    }
+
+    @Test
+    fun `a message for the chat currently on screen does not increment the unread count`() =
+        runBlocking {
+            activeChatTracker.current.value = "chat-1"
+
+            ingestor.ingest(listOf(messageDto("m1", dateCreated = 1000L)), IngestSource.SOCKET)
+
+            assertEquals(0, unreadCount())
+        }
+
+    @Test
+    fun `a message for a different chat still increments while another chat is on screen`() =
+        runBlocking {
+            activeChatTracker.current.value = "chat-other"
+
+            ingestor.ingest(listOf(messageDto("m1", dateCreated = 1000L)), IngestSource.SOCKET)
+
+            assertEquals(1, unreadCount())
+        }
 }

@@ -13,6 +13,7 @@ import app.rebubble.data.remote.dto.HandleDto
 import app.rebubble.data.remote.dto.MessageDto
 import app.rebubble.data.sync.IngestSource
 import app.rebubble.data.sync.MessageIngestor
+import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -58,6 +59,7 @@ class ChatRepositoryTest {
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = ActiveChatTracker(),
         )
     }
 

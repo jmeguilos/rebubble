@@ -78,6 +78,19 @@ android {
         unitTests.isReturnDefaultValues = true
         unitTests.isIncludeAndroidResources = true
     }
+
+    sourceSets {
+        // Room's MigrationTestHelper loads the exported schema JSON through the *Android* asset
+        // manager, and AGP has no asset-merge step for the unit-test variant (there is a
+        // `mergeDebugAssets` and a `mergeDebugAndroidTestAssets`, but no unit-test equivalent) —
+        // so a `src/test/assets` entry would silently never reach Robolectric. Attaching the
+        // schemas to the *debug* source set is what makes `RebubbleMigrationTest` able to open
+        // `app.rebubble.data.local.RebubbleDatabase/1.json`. Debug-only: release APKs never carry
+        // these files.
+        getByName("debug") {
+            assets.srcDir(files("$projectDir/schemas"))
+        }
+    }
 }
 
 ksp {
@@ -142,4 +155,7 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.navigation.testing)
     testImplementation(libs.androidx.work.testing)
+    // Room migration tests run under Robolectric; MigrationTestHelper reads the exported schema
+    // JSON from the debug assets wired up in `sourceSets` above.
+    testImplementation(libs.room.testing)
 }

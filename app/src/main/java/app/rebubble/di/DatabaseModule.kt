@@ -2,6 +2,7 @@ package app.rebubble.di
 
 import android.content.Context
 import androidx.room.Room
+import app.rebubble.data.local.MIGRATION_1_2
 import app.rebubble.data.local.RebubbleDatabase
 import app.rebubble.data.local.dao.AttachmentDao
 import app.rebubble.data.local.dao.ChatDao
@@ -22,7 +23,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideRebubbleDatabase(@ApplicationContext context: Context): RebubbleDatabase =
-        Room.databaseBuilder(context, RebubbleDatabase::class.java, "rebubble.db").build()
+        Room.databaseBuilder(context, RebubbleDatabase::class.java, "rebubble.db")
+            .addMigrations(MIGRATION_1_2)
+            .build()
 
     @Provides
     fun provideChatDao(database: RebubbleDatabase): ChatDao = database.chatDao()

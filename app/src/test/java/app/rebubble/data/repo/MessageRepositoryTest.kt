@@ -12,6 +12,7 @@ import app.rebubble.data.remote.api.FakeServerCredentialsProvider
 import app.rebubble.data.remote.api.testBlueBubblesApi
 import app.rebubble.data.sync.MessageIngestor
 import app.rebubble.data.sync.SyncWatermarkStore
+import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -59,6 +60,7 @@ class MessageRepositoryTest {
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = ActiveChatTracker(),
         )
         watermarkStore = SyncWatermarkStore(newWatermarkDataStore())
         val credentials = FakeServerCredentialsProvider(

@@ -14,6 +14,7 @@ import app.rebubble.data.local.entity.MessageEntity
 import app.rebubble.data.local.entity.SendStatus
 import app.rebubble.data.remote.dto.ChatDto
 import app.rebubble.data.remote.dto.MessageDto
+import app.rebubble.notifications.ActiveChatTracker
 
 /** Where a batch of [MessageDto]s came from; recorded for diagnostics/behavioural tweaks. */
 enum class IngestSource { SOCKET, FCM, RECONCILE, SEND_ACK, BACKFILL }
@@ -51,6 +52,11 @@ data class IngestResult(
  *
  * After a successful insert/merge/swap the referenced chat's denormalized
  * `lastMessageDate`/`lastMessagePreview` are advanced via [ChatDao.updatePreview] (only-if-newer).
+ *
+ * Unread accounting (schema v2) rides on the **insert** outcome only: a merge or a temp-guid swap
+ * is a message this client has already seen (or sent), so re-delivery through a second path
+ * (socket *and* reconcile, say) can never double-count. See [shouldCountAsUnread] for the
+ * exclusions.
  */
 open class MessageIngestor(
     private val db: RebubbleDatabase,
@@ -58,6 +64,7 @@ open class MessageIngestor(
     private val chatDao: ChatDao,
     private val attachmentDao: AttachmentDao,
     private val handleDao: HandleDao,
+    private val activeChatTracker: ActiveChatTracker,
 ) {
 
     /**
@@ -130,6 +137,7 @@ open class MessageIngestor(
                     else -> {
                         messageDao.insertAll(listOf(mapped))
                         inserted += mapped.guid
+                        if (shouldCountAsUnread(mapped, chatGuid)) chatDao.incrementUnread(chatGuid)
                     }
                 }
 
@@ -139,7 +147,11 @@ open class MessageIngestor(
 
                 // Only update preview for regular messages, not reactions.
                 if (mapped.associatedMessageType == null) {
-                    chatDao.updatePreview(chatGuid, mapped.dateCreated, previewFor(dto, mapped))
+                    chatDao.updatePreview(
+                        chatGuid,
+                        mapped.dateCreated,
+                        MessageMapper.previewFor(dto, mapped),
+                    )
                 }
             }
 
@@ -199,19 +211,17 @@ open class MessageIngestor(
         sendStatus = SendStatus.SENT,
     )
 
-    /** Preview text: message text, else an attachment marker, else a group-event summary, else "". */
-    private fun previewFor(dto: MessageDto, mapped: MessageEntity): String {
-        val text = mapped.text?.takeIf { it.isNotBlank() }
-        return when {
-            text != null -> text
-            dto.attachments.isNotEmpty() -> ATTACHMENT_PREVIEW
-            mapped.itemType != 0 -> groupEventSummary(mapped)
-            else -> ""
-        }
-    }
-
-    private fun groupEventSummary(m: MessageEntity): String =
-        m.groupTitle?.takeIf { it.isNotBlank() }?.let { "Named the conversation \"$it\"" } ?: "Group event"
+    /**
+     * True when a newly inserted row should bump `chats.unreadCount`. Excluded:
+     *  - **own messages** (`isFromMe`) — including the echo of a send that arrived before its ack;
+     *  - **reactions** (`associatedMessageType != null`) — they never surface as a list row either;
+     *  - **the chat currently on screen** ([ActiveChatTracker.current]) — the user is reading it,
+     *    so it stays at zero exactly like the notification suppression this tracker already drives.
+     */
+    private fun shouldCountAsUnread(mapped: MessageEntity, chatGuid: String): Boolean =
+        !mapped.isFromMe &&
+            mapped.associatedMessageType == null &&
+            activeChatTracker.current.value != chatGuid
 
     private fun maxOfNullable(a: Long?, b: Long?): Long? = when {
         a == null -> b
@@ -221,6 +231,5 @@ open class MessageIngestor(
 
     private companion object {
         const val LOG_TAG = "MessageIngestor"
-        const val ATTACHMENT_PREVIEW = "📎 Attachment"
     }
 }

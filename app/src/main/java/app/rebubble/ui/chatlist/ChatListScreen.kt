@@ -1,5 +1,6 @@
 package app.rebubble.ui.chatlist
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,11 +24,15 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -41,10 +47,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.rebubble.data.media.CoilImageLoaderEntryPoint
@@ -63,6 +73,9 @@ import kotlinx.coroutines.launch
 private const val SEARCH_COMING_SOON = "Search is coming soon."
 private val RowMinHeight = 76.dp
 private val HeaderIconSize = 32.dp
+private val UnreadBadgeSize = 20.dp
+private val FilterChipShape = RoundedCornerShape(8.dp)
+private const val MaxUnreadBadgeCount = 99
 
 @Composable
 fun ChatListRoute(
@@ -76,6 +89,7 @@ fun ChatListRoute(
         uiState = uiState,
         onChatClick = onChatClick,
         onSettingsClick = onSettingsClick,
+        onFilterSelected = viewModel::onFilterSelected,
         imageLoader = imageLoader,
     )
 }
@@ -97,6 +111,7 @@ fun ChatListScreen(
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
     onSettingsClick: () -> Unit = {},
+    onFilterSelected: (ChatFilter) -> Unit = {},
     nowMs: Long = System.currentTimeMillis(),
 ) {
     val listState = rememberLazyListState()
@@ -133,6 +148,15 @@ fun ChatListScreen(
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
 
+            // Chips only exist once there is something to filter; the empty account keeps the
+            // clean "no conversations yet" screen.
+            if (uiState is ChatListUiState.Loaded) {
+                ChatFilterChips(
+                    selected = uiState.filter,
+                    onFilterSelected = onFilterSelected,
+                )
+            }
+
             SyncStatusChipSlot(status = syncStatus)
 
             // Sheet paints to the physical bottom edge; list/empty content pads for nav bars.
@@ -163,7 +187,14 @@ fun ChatListScreen(
                                 .padding(bottom = navBarBottom),
                         )
                     }
-                    is ChatListUiState.Loaded -> {
+                    is ChatListUiState.Loaded -> if (uiState.items.isEmpty()) {
+                        ChatFilterEmptyState(
+                            filter = uiState.filter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = navBarBottom),
+                        )
+                    } else {
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
@@ -232,6 +263,78 @@ private fun SettingsAvatarButton(
     }
 }
 
+/**
+ * All / Unread / Groups chips (card anatomy: 32dp tall, 8dp radius, selected = secondaryContainer,
+ * unselected = transparent with an outline-variant border).
+ */
+@Composable
+private fun ChatFilterChips(
+    selected: ChatFilter,
+    onFilterSelected: (ChatFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .selectableGroup()
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ChatFilter.entries.forEach { filter ->
+            val isSelected = filter == selected
+            FilterChip(
+                selected = isSelected,
+                onClick = { onFilterSelected(filter) },
+                label = { Text(text = filter.label) },
+                shape = FilterChipShape,
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = Color.Transparent,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+                border = if (isSelected) {
+                    null
+                } else {
+                    FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = false,
+                        borderColor = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                },
+            )
+        }
+    }
+}
+
+private val ChatFilter.label: String
+    get() = when (this) {
+        ChatFilter.All -> "All"
+        ChatFilter.Unread -> "Unread"
+        ChatFilter.Groups -> "Groups"
+    }
+
+@Composable
+private fun ChatFilterEmptyState(
+    filter: ChatFilter,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.padding(horizontal = 32.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = when (filter) {
+                ChatFilter.All -> "No conversations yet"
+                ChatFilter.Unread -> "No unread conversations"
+                ChatFilter.Groups -> "No group conversations"
+            },
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Composable
 private fun SyncStatusChipSlot(
     status: SyncStatus,
@@ -295,6 +398,7 @@ private fun ChatListRow(
             formatRelativeTimestamp(nowMs, then)
         }
     }
+    val isUnread = item.unreadCount > 0
 
     Row(
         modifier = modifier
@@ -317,6 +421,7 @@ private fun ChatListRow(
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (isUnread) FontWeight.Bold else null,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -325,20 +430,67 @@ private fun ChatListRow(
                 Text(
                     text = item.lastMessagePreview,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (isUnread) FontWeight.SemiBold else null,
+                    color = if (isUnread) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
-        if (timestamp.isNotEmpty()) {
+        if (timestamp.isNotEmpty() || isUnread) {
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = timestamp,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                if (timestamp.isNotEmpty()) {
+                    Text(
+                        text = timestamp,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (isUnread) FontWeight.SemiBold else null,
+                        color = if (isUnread) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+                if (isUnread) UnreadBadge(count = item.unreadCount)
+            }
         }
+    }
+}
+
+/**
+ * Unread count pill: 20dp min-width / 20dp tall, primary on onPrimary, capped at `99+` so a long
+ * backlog can never widen the row's trailing column.
+ */
+@Composable
+private fun UnreadBadge(
+    count: Int,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .defaultMinSize(minWidth = UnreadBadgeSize)
+            .height(UnreadBadgeSize)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(horizontal = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = if (count > MaxUnreadBadgeCount) "$MaxUnreadBadgeCount+" else count.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onPrimary,
+            maxLines = 1,
+        )
     }
 }
 
@@ -352,6 +504,7 @@ private fun previewItems(nowMs: Long): List<ChatListItem> = listOf(
         lastMessageDate = nowMs - 120_000,
         lastMessagePreview = "See you soon — parking is around back",
         style = 45,
+        unreadCount = 2,
     ),
     ChatListItem(
         guid = "2",
@@ -376,6 +529,7 @@ private fun previewItems(nowMs: Long): List<ChatListItem> = listOf(
         lastMessageDate = nowMs - 172_800_000,
         lastMessagePreview = "Sam: Bring chips",
         style = 43,
+        unreadCount = 128,
     ),
     ChatListItem(
         guid = "5",
@@ -413,6 +567,59 @@ private fun ChatListLoadedDarkPreview() {
             onChatClick = {},
             imageLoader = ImageLoader.Builder(context).build(),
             nowMs = now,
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Unread filter · light")
+@Composable
+private fun ChatListUnreadFilterLightPreview() {
+    val context = LocalContext.current
+    val now = System.currentTimeMillis()
+    RebubbleTheme(darkTheme = false, dynamicColor = false) {
+        ChatListScreen(
+            uiState = ChatListUiState.Loaded(
+                items = applyChatFilter(previewItems(now), ChatFilter.Unread),
+                filter = ChatFilter.Unread,
+            ),
+            onChatClick = {},
+            imageLoader = ImageLoader.Builder(context).build(),
+            nowMs = now,
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Groups filter · dark",
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+)
+@Composable
+private fun ChatListGroupsFilterDarkPreview() {
+    val context = LocalContext.current
+    val now = System.currentTimeMillis()
+    RebubbleTheme(darkTheme = true, dynamicColor = false) {
+        ChatListScreen(
+            uiState = ChatListUiState.Loaded(
+                items = applyChatFilter(previewItems(now), ChatFilter.Groups),
+                filter = ChatFilter.Groups,
+            ),
+            onChatClick = {},
+            imageLoader = ImageLoader.Builder(context).build(),
+            nowMs = now,
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Filter · no matches")
+@Composable
+private fun ChatListFilterNoMatchesPreview() {
+    val context = LocalContext.current
+    RebubbleTheme(darkTheme = false, dynamicColor = false) {
+        ChatListScreen(
+            uiState = ChatListUiState.Loaded(items = emptyList(), filter = ChatFilter.Unread),
+            onChatClick = {},
+            imageLoader = ImageLoader.Builder(context).build(),
         )
     }
 }

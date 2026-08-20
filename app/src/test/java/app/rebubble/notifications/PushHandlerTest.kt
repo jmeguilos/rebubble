@@ -10,6 +10,7 @@ import app.rebubble.data.remote.loadFixture
 import app.rebubble.data.sync.MessageIngestor
 import app.rebubble.data.sync.NewMessageAlert
 import app.rebubble.data.sync.SyncScheduling
+import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.After
@@ -50,6 +51,7 @@ class PushHandlerTest {
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = ActiveChatTracker(),
         )
         alerted.clear()
         handler = PushHandler(
@@ -144,6 +146,7 @@ class PushHandlerTest {
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = ActiveChatTracker(),
         ) {
             override suspend fun ingest(
                 dtos: List<app.rebubble.data.remote.dto.MessageDto>,

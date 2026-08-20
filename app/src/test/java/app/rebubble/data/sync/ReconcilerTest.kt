@@ -8,6 +8,7 @@ import app.rebubble.data.local.RebubbleDatabase
 import app.rebubble.data.local.entity.ChatEntity
 import app.rebubble.data.remote.api.FakeServerCredentialsProvider
 import app.rebubble.data.remote.api.testBlueBubblesApi
+import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -62,6 +63,7 @@ class ReconcilerTest {
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = ActiveChatTracker(),
         )
         watermarkStore = SyncWatermarkStore(newWatermarkDataStore())
     }
@@ -113,9 +115,29 @@ class ReconcilerTest {
         displayName: String? = null,
         style: Int = 45,
         chatIdentifier: String = "+15551234567",
+        lastMessage: String? = null,
     ): String {
         val displayNamePart = displayName?.let { "\"displayName\":\"$it\"," }.orEmpty()
-        return """{"guid":"$guid","style":$style,"chatIdentifier":"$chatIdentifier",$displayNamePart"participants":[]}"""
+        val lastMessagePart = lastMessage?.let { "\"lastMessage\":$it," }.orEmpty()
+        return """{"guid":"$guid","style":$style,"chatIdentifier":"$chatIdentifier",""" +
+            """$displayNamePart$lastMessagePart"participants":[]}"""
+    }
+
+    /** The `lastMessage` object `POST /chat/query` attaches when `with=lastMessage` is requested. */
+    private fun lastMessageJson(
+        guid: String,
+        text: String? = "hi there",
+        dateCreated: Long = 1000L,
+        isFromMe: Boolean = false,
+        attachments: String = "[]",
+        associatedMessageType: String? = null,
+    ): String {
+        val textPart = text?.let { "\"text\":\"$it\"," } ?: "\"text\":null,"
+        val reactionPart = associatedMessageType
+            ?.let { "\"associatedMessageType\":\"$it\"," }
+            .orEmpty()
+        return """{"guid":"$guid",$textPart"isFromMe":$isFromMe,"dateCreated":$dateCreated,""" +
+            """$reactionPart"attachments":$attachments}"""
     }
 
     private fun messageJson(
@@ -293,5 +315,86 @@ class ReconcilerTest {
         assertNull(watermarkStore.get())
         assertNotNull(db.chatDao().getByGuid("chat-new"))
         assertEquals(1, server.requestCount) // only the chat-pass request; no message-pass call attempted
+    }
+
+    // --- 8. chat pass seeds previews from `lastMessage` (fresh-install product gap) ------------
+
+    @Test
+    fun `chat pass seeds a fresh chat's preview from lastMessage without ingesting the message row`() =
+        runBlocking {
+            // No watermark: exactly the fresh-onboard shape, where the message pass never runs and
+            // the chat list would otherwise show every conversation with a blank preview.
+            enqueueChats(
+                chatJson(
+                    "chat-1",
+                    displayName = "Maya Chen",
+                    lastMessage = lastMessageJson("m-last", text = "On my way — ten minutes"),
+                ),
+            )
+
+            val outcome = runReconcile()
+
+            assertNull(outcome.error)
+            val chat = db.chatDao().getByGuid("chat-1")
+            assertEquals("On my way — ten minutes", chat?.lastMessagePreview)
+            assertEquals(1000L, chat?.lastMessageDate)
+            // History stays the backfill's job — the row itself must not be stored.
+            assertNull(db.messageDao().getByGuid("m-last"))
+            assertEquals(0, messageCount())
+        }
+
+    @Test
+    fun `chat pass lastMessage never regresses a newer local preview`() = runBlocking {
+        db.chatDao().upsert(
+            listOf(
+                ChatEntity(
+                    guid = "chat-1",
+                    style = 45,
+                    chatIdentifier = "+15551234567",
+                    displayName = "Maya Chen",
+                    isArchived = false,
+                    lastMessageDate = 5_000L,
+                    lastMessagePreview = "newer local message",
+                )
+            )
+        )
+        enqueueChats(
+            chatJson(
+                "chat-1",
+                displayName = "Maya Chen",
+                lastMessage = lastMessageJson("m-stale", text = "stale server preview", dateCreated = 1_000L),
+            ),
+        )
+
+        val outcome = runReconcile()
+
+        assertNull(outcome.error)
+        val chat = db.chatDao().getByGuid("chat-1")
+        assertEquals("newer local message", chat?.lastMessagePreview)
+        assertEquals(5_000L, chat?.lastMessageDate)
+    }
+
+    @Test
+    fun `chat pass derives the same preview markers the ingestor does`() = runBlocking {
+        val attachmentJson =
+            """[{"guid":"a1","uti":"public.jpeg","mimeType":"image/jpeg","transferName":"p.jpg"}]"""
+        enqueueChats(
+            chatJson(
+                "chat-photo",
+                lastMessage = lastMessageJson("m-photo", text = null, attachments = attachmentJson),
+            ),
+            chatJson(
+                "chat-reaction",
+                chatIdentifier = "+15559876543",
+                lastMessage = lastMessageJson("m-react", text = null, associatedMessageType = "love"),
+            ),
+        )
+
+        val outcome = runReconcile()
+
+        assertNull(outcome.error)
+        assertEquals("📎 Attachment", db.chatDao().getByGuid("chat-photo")?.lastMessagePreview)
+        // A tapback is not a conversation preview — same exclusion the ingestor applies.
+        assertNull(db.chatDao().getByGuid("chat-reaction")?.lastMessagePreview)
     }
 }

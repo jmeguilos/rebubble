@@ -38,9 +38,10 @@ val ChatAvatarSizeCompact = 40.dp
  * (or person glyph for phone-number-only titles). Groups use a single clipped
  * circle with a group glyph.
  *
- * Named-contact monograms pick a stable hue from [hueKey] (chat guid preferred).
- * Unknown-number / person glyphs and group glyphs use surfaceContainerHighest +
- * onSurfaceVariant (task T-A; list-card unknown-number row).
+ * Named-contact monograms *and* group glyphs pick a stable hue from [hueKey] (chat guid preferred)
+ * — the design card shows the group row tinted like any named contact, with the glyph taking the
+ * hue's foreground. Only the unknown-number person glyph stays neutral (surfaceContainerHighest +
+ * onSurfaceVariant), which is what keeps it reading as "no identity known".
  */
 @Composable
 fun ChatAvatar(
@@ -71,7 +72,7 @@ fun ChatAvatar(
                     .clip(CircleShape),
             )
         } else if (isGroup) {
-            GroupMonogram(size = size)
+            GroupMonogram(size = size, hueKey = hueKey)
         } else {
             when (label) {
                 is AvatarLabel.Initials -> MonogramCircle(
@@ -130,18 +131,23 @@ private fun PersonMonogram(
 }
 
 /**
- * Group avatar: [Icons.Outlined.Group] on surfaceContainerHighest /
- * onSurfaceVariant (T-A glyph treatment).
+ * Group avatar: [Icons.Outlined.Group] on the hue picked from [hueKey] (chat guid), tinted with
+ * that hue's foreground — same treatment as a named contact's monogram, per the chat-list card.
  */
 @Composable
 fun GroupMonogram(
     modifier: Modifier = Modifier,
     size: Dp = ChatAvatarSizeLarge,
+    hueKey: String = "",
 ) {
+    val dark = isSystemInDarkTheme()
+    val hue = remember(hueKey, dark) { avatarHueFor(hueKey, dark) }
     GlyphAvatar(
         size = size,
         modifier = modifier,
         icon = Icons.Outlined.Group,
+        background = hue.background,
+        foreground = hue.foreground,
     )
 }
 

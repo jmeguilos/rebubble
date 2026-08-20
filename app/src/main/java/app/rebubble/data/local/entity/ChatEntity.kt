@@ -12,4 +12,11 @@ data class ChatEntity(
     val isArchived: Boolean = false,
     val lastMessageDate: Long?,
     val lastMessagePreview: String?, // denormalized by the ingestor
+    /**
+     * Local-only unread counter (schema v2). Incremented by
+     * [app.rebubble.data.sync.MessageIngestor] for each newly inserted incoming, non-reaction
+     * message while the chat is not on screen, and zeroed when the chat is opened. Never sourced
+     * from the server — BlueBubbles has no per-chat unread state this client can trust.
+     */
+    val unreadCount: Int = 0,
 )

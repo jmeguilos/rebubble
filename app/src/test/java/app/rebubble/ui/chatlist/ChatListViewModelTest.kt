@@ -6,6 +6,7 @@ import app.rebubble.data.local.entity.ChatEntity
 import app.rebubble.data.local.entity.ChatHandleCrossRef
 import app.rebubble.data.local.entity.ContactEntity
 import app.rebubble.data.local.entity.HandleEntity
+import app.rebubble.data.repo.ChatListItem
 import app.rebubble.data.repo.ChatRepository
 import app.rebubble.data.sync.SyncOutcome
 import app.rebubble.data.sync.SyncStatus
@@ -75,6 +76,7 @@ class ChatListViewModelTest {
         lastMessageDate: Long? = null,
         lastMessagePreview: String? = null,
         chatIdentifier: String? = "+15550001111",
+        unreadCount: Int = 0,
     ) = ChatEntity(
         guid = guid,
         style = style,
@@ -83,6 +85,7 @@ class ChatListViewModelTest {
         isArchived = false,
         lastMessageDate = lastMessageDate,
         lastMessagePreview = lastMessagePreview,
+        unreadCount = unreadCount,
     )
 
     @Test
@@ -162,5 +165,135 @@ class ChatListViewModelTest {
         val item = state.items.single()
         assertEquals("John, $addressB", item.title)
         assertTrue(item.isGroup)
+    }
+
+    // --- chips row filtering --------------------------------------------------------------------
+
+    private fun item(guid: String, style: Int = 45, unreadCount: Int = 0) = ChatListItem(
+        guid = guid,
+        title = guid,
+        isGroup = style == 43,
+        lastMessageDate = 1L,
+        lastMessagePreview = null,
+        style = style,
+        unreadCount = unreadCount,
+    )
+
+    @Test
+    fun `applyChatFilter keeps everything for All, unread-only for Unread, style 43 for Groups`() {
+        val items = listOf(
+            item("dm-unread", unreadCount = 3),
+            item("dm-read"),
+            item("group-unread", style = 43, unreadCount = 1),
+            item("group-read", style = 43),
+        )
+
+        assertEquals(items, applyChatFilter(items, ChatFilter.All))
+        assertEquals(
+            listOf("dm-unread", "group-unread"),
+            applyChatFilter(items, ChatFilter.Unread).map { it.guid },
+        )
+        assertEquals(
+            listOf("group-unread", "group-read"),
+            applyChatFilter(items, ChatFilter.Groups).map { it.guid },
+        )
+    }
+
+    @Test
+    fun `applyChatFilter preserves the repository's newest-first order`() {
+        val items = listOf(
+            item("newest", unreadCount = 1),
+            item("middle"),
+            item("oldest", unreadCount = 2),
+        )
+
+        assertEquals(
+            listOf("newest", "oldest"),
+            applyChatFilter(items, ChatFilter.Unread).map { it.guid },
+        )
+    }
+
+    @Test
+    fun `selecting a chip re-emits Loaded filtered to that chip`() = runBlocking {
+        db.chatDao().upsert(
+            listOf(
+                chat("dm", lastMessageDate = 300L, displayName = "Maya", unreadCount = 2),
+                chat("group", style = 43, lastMessageDate = 200L, displayName = "Ski trip"),
+                chat("quiet", lastMessageDate = 100L, displayName = "Dad"),
+            )
+        )
+        val vm = viewModel()
+        val all = awaitState(vm) { it is ChatListUiState.Loaded } as ChatListUiState.Loaded
+        assertEquals(listOf("dm", "group", "quiet"), all.items.map { it.guid })
+        assertEquals(ChatFilter.All, all.filter)
+        assertEquals(2, all.items.first().unreadCount)
+
+        vm.onFilterSelected(ChatFilter.Unread)
+        val unread = awaitState(vm) {
+            it is ChatListUiState.Loaded && it.filter == ChatFilter.Unread
+        } as ChatListUiState.Loaded
+        assertEquals(listOf("dm"), unread.items.map { it.guid })
+
+        vm.onFilterSelected(ChatFilter.Groups)
+        val groups = awaitState(vm) {
+            it is ChatListUiState.Loaded && it.filter == ChatFilter.Groups
+        } as ChatListUiState.Loaded
+        assertEquals(listOf("group"), groups.items.map { it.guid })
+
+        vm.onFilterSelected(ChatFilter.All)
+        val back = awaitState(vm) {
+            it is ChatListUiState.Loaded && it.filter == ChatFilter.All
+        } as ChatListUiState.Loaded
+        assertEquals(listOf("dm", "group", "quiet"), back.items.map { it.guid })
+    }
+
+    @Test
+    fun `a filter that matches nothing stays Loaded with no items so the chips row survives`() =
+        runBlocking {
+            db.chatDao().upsert(listOf(chat("quiet", lastMessageDate = 100L, displayName = "Dad")))
+            val vm = viewModel()
+            awaitState(vm) { it is ChatListUiState.Loaded }
+
+            vm.onFilterSelected(ChatFilter.Unread)
+
+            val state = awaitState(vm) {
+                it is ChatListUiState.Loaded && it.filter == ChatFilter.Unread
+            } as ChatListUiState.Loaded
+            assertTrue(state.items.isEmpty())
+        }
+
+    @Test
+    fun `an account with no chats is Empty regardless of the selected chip`() = runBlocking {
+        val vm = viewModel()
+        awaitState(vm) { it is ChatListUiState.Empty }
+
+        vm.onFilterSelected(ChatFilter.Groups)
+
+        assertEquals(
+            ChatListUiState.Empty(syncStatus = SyncStatus.Idle),
+            awaitState(vm) { it is ChatListUiState.Empty },
+        )
+    }
+
+    @Test
+    fun `unread count from the entity surfaces on the loaded item`() = runBlocking {
+        db.chatDao().upsert(listOf(chat("dm", lastMessageDate = 1L, displayName = "Maya")))
+        val vm = viewModel()
+        val initial = awaitState(vm) { it is ChatListUiState.Loaded } as ChatListUiState.Loaded
+        assertEquals(0, initial.items.single().unreadCount)
+
+        db.chatDao().incrementUnread("dm")
+
+        val badged = awaitState(vm) {
+            it is ChatListUiState.Loaded && it.items.single().unreadCount == 1
+        } as ChatListUiState.Loaded
+        assertEquals(1, badged.items.single().unreadCount)
+
+        db.chatDao().clearUnread("dm")
+
+        val cleared = awaitState(vm) {
+            it is ChatListUiState.Loaded && it.items.single().unreadCount == 0
+        } as ChatListUiState.Loaded
+        assertEquals(0, cleared.items.single().unreadCount)
     }
 }

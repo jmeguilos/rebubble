@@ -20,6 +20,8 @@ object MessageMapper {
 
     private val PART_PREFIX = Regex("^p:\\d+/")
 
+    internal const val ATTACHMENT_PREVIEW = "📎 Attachment"
+
     /** Freshly-mapped entity carries [SendStatus.SENT]; the ingestor overrides it where needed. */
     fun toEntity(dto: MessageDto, chatGuid: String): MessageEntity = MessageEntity(
         guid = dto.guid,
@@ -63,6 +65,27 @@ object MessageMapper {
                 downloadState = DownloadState.NOT_DOWNLOADED,
             )
         }
+
+    /**
+     * Preview text for the denormalized `chats.lastMessagePreview`: message text, else an
+     * attachment marker, else a group-event summary, else "".
+     *
+     * Shared by both writers of that column so they can never drift: [MessageIngestor.ingest]
+     * (every inbound message) and [Reconciler]'s chat pass (the `lastMessage` attached to a
+     * `POST /chat/query` row, which is how a fresh install gets previews before backfill runs).
+     */
+    fun previewFor(dto: MessageDto, mapped: MessageEntity): String {
+        val text = mapped.text?.takeIf { it.isNotBlank() }
+        return when {
+            text != null -> text
+            dto.attachments.isNotEmpty() -> ATTACHMENT_PREVIEW
+            mapped.itemType != 0 -> groupEventSummary(mapped)
+            else -> ""
+        }
+    }
+
+    private fun groupEventSummary(m: MessageEntity): String =
+        m.groupTitle?.takeIf { it.isNotBlank() }?.let { "Named the conversation \"$it\"" } ?: "Group event"
 
     /**
      * Strips the reply-part prefix (`p:<n>/`) and/or the "before part" prefix (`bp:`) that

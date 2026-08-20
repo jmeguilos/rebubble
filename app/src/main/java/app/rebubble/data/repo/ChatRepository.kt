@@ -20,6 +20,8 @@ data class ChatListItem(
     val style: Int,
     /** Contact avatar path for 1:1 chats when known; null → monogram (or group treatment). */
     val avatarPath: String? = null,
+    /** Local unread messages since the chat was last opened; `> 0` drives the row's badge. */
+    val unreadCount: Int = 0,
 )
 
 /**
@@ -64,7 +66,17 @@ class ChatRepository @Inject constructor(
                     } else {
                         null
                     },
+                    unreadCount = chat.unreadCount,
                 )
             }
         }.distinctUntilChanged()
+
+    /**
+     * Clear-on-open: zeroes [ChatListItem.unreadCount] for [chatGuid]. Called when the conversation
+     * screen becomes active (alongside [app.rebubble.notifications.ActiveChatTracker]), which is
+     * also the point from which the ingestor stops counting new arrivals for that chat.
+     */
+    suspend fun clearUnread(chatGuid: String) {
+        chatDao.clearUnread(chatGuid)
+    }
 }

@@ -48,11 +48,12 @@ data class SyncOutcome(val newMessageGuids: List<String>, val error: Throwable?)
  *
  *  1. **Chat pass** — pages through `POST /chat/query` (`sort=lastmessage`) picking up brand-new
  *     chats and metadata changes (renames, archive toggles) on known ones. New chats are seeded
- *     via [ChatDao.insertIgnore] (empty preview — the message pass below fills it in, or a later
- *     reconcile does once the relevant page comes into watermark range); known chats are refreshed
- *     via [ChatDao.updateMetadata], which deliberately leaves `lastMessageDate`/`lastMessagePreview`
- *     alone. This never uses [ChatDao.upsert] (that's a `REPLACE`, flagged by T4/T6 as unsafe here:
- *     it would clobber a known chat's denormalized preview with nulls). Participants are upserted
+ *     via [ChatDao.insertIgnore]; known chats are refreshed via [ChatDao.updateMetadata], which
+ *     deliberately leaves `lastMessageDate`/`lastMessagePreview` alone. This never uses
+ *     [ChatDao.upsert] (that's a `REPLACE`, flagged by T4/T6 as unsafe here: it would clobber a
+ *     known chat's denormalized preview with nulls). The preview columns are instead advanced from
+ *     each row's `lastMessage` via [seedPreviewFromLastMessage] — only-if-newer, message row not
+ *     ingested — which is what gives a fresh install non-blank previews. Participants are upserted
  *     alongside via [HandleDao.upsert] + [HandleDao.upsertChatHandleCrossRefs].
  *  2. **Message pass** — reads the persisted watermark ([SyncWatermarkStore.get]). A `null`
  *     watermark means sync hasn't been initialized yet (expected to happen once at onboarding, via
@@ -154,6 +155,7 @@ class Reconciler(
                 style = c.style,
                 isArchived = c.isArchived,
             )
+            seedPreviewFromLastMessage(c)
         }
 
         val participants = chats.flatMap { c -> c.participants.map { c.guid to it } }
@@ -165,6 +167,29 @@ class Reconciler(
         handleDao.upsertChatHandleCrossRefs(
             participants.map { (chatGuid, handle) -> ChatHandleCrossRef(chatGuid = chatGuid, address = handle.address) }
         )
+    }
+
+    /**
+     * Fills `lastMessageDate`/`lastMessagePreview` from the `lastMessage` the chat query already
+     * returns (`with=lastMessage`).
+     *
+     * This is what gives a **fresh install** previews: onboarding initializes the watermark at the
+     * server's current max, so the message pass never re-fetches history and the list would
+     * otherwise sit there showing every conversation with a blank second line until the user opened
+     * each one. The message row itself is deliberately *not* ingested here — history is the
+     * backfill's job ([app.rebubble.data.repo.MessageRepository.loadOlder]) — only the denormalized
+     * preview columns are touched.
+     *
+     * Reactions are skipped for the same reason [MessageIngestor] skips them (a tapback is not a
+     * conversation preview), and [ChatDao.updatePreview]'s only-if-newer predicate keeps a locally
+     * ingested newer message from being overwritten by a staler server `lastMessage`.
+     */
+    private suspend fun seedPreviewFromLastMessage(chat: ChatDto) {
+        val last = chat.lastMessage ?: return
+        val mapped = MessageMapper.toEntity(last, chat.guid)
+        if (mapped.associatedMessageType != null) return
+        if (mapped.dateCreated <= 0L) return
+        chatDao.updatePreview(chat.guid, mapped.dateCreated, MessageMapper.previewFor(last, mapped))
     }
 
     // --- message pass -----------------------------------------------------------------------

@@ -9,6 +9,7 @@ import app.rebubble.data.remote.dto.MessageDto
 import app.rebubble.data.sync.IngestResult
 import app.rebubble.data.sync.IngestSource
 import app.rebubble.data.sync.MessageIngestor
+import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,7 @@ class SocketEventHandlerTest {
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = ActiveChatTracker(),
         )
         // Default so Room transaction work can resume off Unconfined after suspend points.
         handlerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -221,6 +223,7 @@ class SocketEventHandlerTest {
         chatDao = db.chatDao(),
         attachmentDao = db.attachmentDao(),
         handleDao = db.handleDao(),
+        activeChatTracker = ActiveChatTracker(),
     ) {
         @Volatile
         var shouldThrow: Boolean = true

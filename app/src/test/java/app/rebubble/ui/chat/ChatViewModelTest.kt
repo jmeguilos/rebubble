@@ -22,9 +22,12 @@ import app.rebubble.data.outbox.OutboxRepository
 import app.rebubble.data.remote.api.BlueBubblesApi
 import app.rebubble.data.remote.api.FakeServerCredentialsProvider
 import app.rebubble.data.remote.api.testBlueBubblesApi
+import app.rebubble.data.remote.dto.ChatDto
+import app.rebubble.data.remote.dto.MessageDto
 import app.rebubble.data.repo.AttachmentRepository
 import app.rebubble.data.repo.ChatRepository
 import app.rebubble.data.repo.MessageRepository
+import app.rebubble.data.sync.IngestSource
 import app.rebubble.data.sync.MessageIngestor
 import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.CompletableDeferred
@@ -90,12 +93,14 @@ class ChatViewModelTest {
             passwordValue = "pw",
         )
         api = testBlueBubblesApi(credentials)
+        activeChatTracker = ActiveChatTracker()
         ingestor = MessageIngestor(
             db = db,
             messageDao = db.messageDao(),
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = activeChatTracker,
         )
         messageRepository = ControllableMessageRepository(api, db, ingestor)
         outbox = RecordingOutboxRepository(context, db)
@@ -109,7 +114,6 @@ class ChatViewModelTest {
             handleDao = db.handleDao(),
             contactDao = db.contactDao(),
         )
-        activeChatTracker = ActiveChatTracker()
 
         runBlocking {
             db.chatDao().upsert(
@@ -276,6 +280,57 @@ class ChatViewModelTest {
         store.clear()
         assertNull(activeChatTracker.current.value)
     }
+
+    @Test
+    fun `onEnter clears the chat's unread count and leaves other chats alone`() = runBlocking {
+        val otherGuid = "iMessage;-;+15559998888"
+        db.chatDao().upsert(
+            listOf(
+                ChatEntity(
+                    guid = otherGuid,
+                    style = 45,
+                    chatIdentifier = "+15559998888",
+                    displayName = "Sam",
+                    isArchived = false,
+                    lastMessageDate = null,
+                    lastMessagePreview = null,
+                ),
+            ),
+        )
+        db.chatDao().incrementUnread(chatGuid)
+        db.chatDao().incrementUnread(chatGuid)
+        db.chatDao().incrementUnread(otherGuid)
+        assertEquals(2, db.chatDao().getByGuid(chatGuid)?.unreadCount)
+
+        viewModel().onEnter()
+
+        assertEquals(0, db.chatDao().getByGuid(chatGuid)?.unreadCount)
+        assertEquals(1, db.chatDao().getByGuid(otherGuid)?.unreadCount)
+    }
+
+    @Test
+    fun `a message arriving while the chat is open never leaves an unread badge behind`() =
+        runBlocking {
+            val vm = viewModel()
+            vm.onEnter()
+
+            ingestor.ingest(
+                listOf(
+                    MessageDto(
+                        guid = "incoming-1",
+                        text = "you there?",
+                        isFromMe = false,
+                        dateCreated = 4_000L,
+                        chats = listOf(
+                            ChatDto(guid = chatGuid, style = 45, chatIdentifier = "+15551234567"),
+                        ),
+                    ),
+                ),
+                IngestSource.SOCKET,
+            )
+
+            assertEquals(0, db.chatDao().getByGuid(chatGuid)?.unreadCount)
+        }
 
     @Test
     fun `onExit clears tracker only for this chat`() = runBlocking {

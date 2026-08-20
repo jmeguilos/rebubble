@@ -17,6 +17,7 @@ import app.rebubble.data.remote.api.FakeServerCredentialsProvider
 import app.rebubble.data.remote.api.testBlueBubblesApi
 import app.rebubble.data.repo.InMemorySecretStore
 import app.rebubble.data.repo.ServerConfigRepository
+import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -65,6 +66,7 @@ class SyncWorkerTest {
             chatDao = db.chatDao(),
             attachmentDao = db.attachmentDao(),
             handleDao = db.handleDao(),
+            activeChatTracker = ActiveChatTracker(),
         )
         watermarkStore = SyncWatermarkStore(newDataStore("sync_state"))
         val credentials = FakeServerCredentialsProvider(
