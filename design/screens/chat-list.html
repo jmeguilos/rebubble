@@ -1,0 +1,48 @@
+<!-- @dsCard group="Screens" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_tokens.css">
+<style>
+  body { display: flex; gap: 28px; padding: 24px; justify-content: center; background: #fff; }
+  .phone { width: 390px; height: 780px; border-radius: 32px; overflow: hidden; background: var(--surface-container);
+           box-shadow: 0 4px 24px rgba(0,0,0,.12); display: flex; flex-direction: column; }
+  .phone.dark { --primary:#B9C3FF; --on-primary:#00184A; --primary-container:#1E3163; --on-primary-container:#DDE1FF;
+    --surface:#131318; --surface-container:#1F1F25; --surface-container-high:#29282F;
+    --on-surface:#E4E1E9; --on-surface-variant:#C7C5D0; background: var(--surface-container); color: var(--on-surface); }
+  .status { height: 34px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 500; }
+  .header { display: flex; justify-content: space-between; align-items: center; padding: 8px 20px 14px; }
+  .wordmark { font-family: var(--font-display); font-weight: 600; font-size: 26px; }
+  .gear { width: 34px; height: 34px; border-radius: 50%; background: var(--surface-container-high); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .search { margin: 0 16px 14px; height: 52px; border-radius: 26px; background: var(--surface-container-high);
+            display: flex; align-items: center; gap: 12px; padding: 0 18px; color: var(--on-surface-variant); font-size: 16px; }
+  .sheet { flex: 1; background: var(--surface); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; padding: 10px 4px; }
+  .row { display: flex; align-items: center; gap: 14px; padding: 10px 16px; min-height: 74px; }
+  .avatar { width: 54px; height: 54px; border-radius: 50%; background: var(--primary-container); color: var(--on-primary-container);
+            display:flex; align-items:center; justify-content:center; font-weight:500; font-size:19px; flex-shrink:0; }
+  .mid { flex:1; min-width:0 } .title { font-size:16px; font-weight:500; } .preview { font-size:14px; color:var(--on-surface-variant); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .end { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .ts { font-size:12px; font-weight:500; color:var(--on-surface-variant) } .dot { width:10px;height:10px;border-radius:50%;background:var(--primary) }
+  .unread .title, .unread .preview { font-weight:700; color:var(--on-surface) }
+</style></head><body>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>▲ ▮</span></div>
+  <div class="header"><div class="wordmark">Rebubble</div><div class="gear">⚙</div></div>
+  <div class="search">🔍 Search conversations</div>
+  <div class="sheet">
+    <div class="row unread"><div class="avatar">M</div><div class="mid"><div class="title">Maya Chen</div><div class="preview">On my way — ten minutes</div></div><div class="end"><div class="ts">now</div><div class="dot"></div></div></div>
+    <div class="row"><div class="avatar">👥</div><div class="mid"><div class="title">Ski trip 2026</div><div class="preview">Alex: lift tickets are booked 🎿</div></div><div class="end"><div class="ts">14:32</div></div></div>
+    <div class="row"><div class="avatar">D</div><div class="mid"><div class="title">Dad</div><div class="preview">You: happy birthday!! 🎂</div></div><div class="end"><div class="ts">Tue</div></div></div>
+    <div class="row"><div class="avatar">👤</div><div class="mid"><div class="title">+1 555 010 0001</div><div class="preview">Your package was delivered</div></div><div class="end"><div class="ts">Jul 14</div></div></div>
+  </div>
+</div>
+<div class="phone dark">
+  <div class="status"><span>9:41</span><span>▲ ▮</span></div>
+  <div class="header"><div class="wordmark">Rebubble</div><div class="gear">⚙</div></div>
+  <div class="search">🔍 Search conversations</div>
+  <div class="sheet">
+    <div class="row unread"><div class="avatar">M</div><div class="mid"><div class="title">Maya Chen</div><div class="preview">On my way — ten minutes</div></div><div class="end"><div class="ts">now</div><div class="dot"></div></div></div>
+    <div class="row"><div class="avatar">👥</div><div class="mid"><div class="title">Ski trip 2026</div><div class="preview">Alex: lift tickets are booked 🎿</div></div><div class="end"><div class="ts">14:32</div></div></div>
+    <div class="row"><div class="avatar">D</div><div class="mid"><div class="title">Dad</div><div class="preview">You: happy birthday!! 🎂</div></div><div class="end"><div class="ts">Tue</div></div></div>
+  </div>
+</div>
+</body></html>

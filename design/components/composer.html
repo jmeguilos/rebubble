@@ -1,0 +1,26 @@
+<!-- @dsCard group="Components" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_tokens.css">
+<style>
+  body { padding: 24px; background: var(--surface-container); max-width: 560px; }
+  .label { font-size: 11px; color: var(--on-surface-variant); margin: 16px 0 8px; font-weight: 500; letter-spacing: .3px; text-transform: uppercase; }
+  .composer { display: flex; align-items: flex-end; gap: 10px; }
+  .plus { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-container-high); color: var(--on-surface-variant);
+          display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+  .field { flex: 1; min-height: 44px; border-radius: 24px; background: var(--surface-container-high); padding: 11px 18px; font-size: 16px; color: var(--on-surface-variant); }
+  .field .text { color: var(--on-surface); }
+  .send { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .send.active { background: var(--primary); } .send.idle { background: transparent; }
+  .send svg { width: 22px; height: 22px; fill: var(--on-primary); }
+  .note { font-size: 11px; color: var(--on-surface-variant); margin-top: 18px; }
+</style></head><body>
+<div class="label">Empty — send slot reserved (no layout shift)</div>
+<div class="composer"><div class="plus">+</div><div class="field">Message</div><div class="send idle"></div></div>
+<div class="label">With text — filled circular send</div>
+<div class="composer"><div class="plus">+</div><div class="field"><span class="text">Leaving now, see you at 7</span></div>
+  <div class="send active"><svg viewBox="0 0 24 24"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg></div></div>
+<div class="label">SMS chat — placeholder signals the service</div>
+<div class="composer"><div class="plus">+</div><div class="field">Text message</div><div class="send idle"></div></div>
+<p class="note">44dp tonal plus (photo picker) · 24dp-radius pill field · 44dp primary send, slot always reserved. Composer sits on the tonal layer below the thread sheet.</p>
+</body></html>

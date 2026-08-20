@@ -1,0 +1,49 @@
+<!-- @dsCard group="Components" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_tokens.css">
+<style>
+  body { padding: 24px; background: var(--surface); max-width: 720px; }
+  .thread { display: flex; flex-direction: column; gap: 2px; margin-bottom: 20px; }
+  .label { font-size: 11px; color: var(--on-surface-variant); margin: 14px 0 6px; font-weight: 500; letter-spacing: .3px; text-transform: uppercase; }
+  .bubble { max-width: 76%; padding: 10px 14px; font-size: 16px; line-height: 1.35; position: relative; width: fit-content; }
+  .in { background: var(--incoming); color: var(--on-incoming); align-self: flex-start;
+        border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) var(--radius-tight); }
+  .in.first { border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) var(--radius-tight); }
+  .in.mid   { border-radius: var(--radius-tight) var(--radius-bubble) var(--radius-bubble) var(--radius-tight); }
+  .in.last  { border-radius: var(--radius-tight) var(--radius-bubble) var(--radius-bubble) var(--radius-bubble); }
+  .out { background: var(--imessage); color: var(--on-bubble); align-self: flex-end;
+         border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-tight) var(--radius-bubble); }
+  .out.last { border-radius: var(--radius-bubble) var(--radius-tight) var(--radius-bubble) var(--radius-bubble); }
+  .out.sms { background: var(--sms); }
+  .out.sending { opacity: .65; }
+  /* tail: small quarter-circle notch on the run's final bubble */
+  .tail-in::after, .tail-out::after { content:""; position: absolute; bottom: 0; width: 12px; height: 12px; }
+  .tail-in::after  { left: -6px;  background: radial-gradient(circle at 0 0, transparent 12px, var(--incoming) 12px); transform: scaleX(-1); }
+  .tail-out::after { right: -6px; background: radial-gradient(circle at 0 0, transparent 12px, var(--imessage) 12px); }
+  .tail-out.sms::after { background: radial-gradient(circle at 0 0, transparent 12px, var(--sms) 12px); }
+  .micro { align-self: flex-end; font-size: 12px; font-weight: 500; color: var(--on-surface-variant); margin: 2px 6px 0 0; }
+  .failedrow { align-self: flex-end; display: flex; flex-direction: column; align-items: flex-end; }
+  .failed { background: var(--error-container); color: var(--on-error-container); }
+  .retry { font-size: 12px; font-weight: 500; color: var(--error); margin-top: 3px; }
+</style></head><body>
+<div class="label">Incoming run — 60s grouping, tail on last</div>
+<div class="thread">
+  <div class="bubble in first">Are you coming tonight?</div>
+  <div class="bubble in mid">We're starting at 7</div>
+  <div class="bubble in last tail-in">Bring the cable you borrowed 😄</div>
+</div>
+<div class="label">Outgoing iMessage run + Delivered microcopy</div>
+<div class="thread">
+  <div class="bubble out">Yes! Leaving soon</div>
+  <div class="bubble out last tail-out">And yes, I still have it…</div>
+  <div class="micro">Delivered</div>
+</div>
+<div class="label">Outgoing SMS (semantic green)</div>
+<div class="thread"><div class="bubble out sms last tail-out sms">Text-forwarding chats go green</div></div>
+<div class="label">States: sending (65% alpha) · failed</div>
+<div class="thread">
+  <div class="bubble out sending last tail-out">This one is in flight</div>
+  <div class="failedrow"><div class="bubble out failed">This one hit a wall</div><div class="retry">Not sent — tap to retry</div></div>
+</div>
+</body></html>

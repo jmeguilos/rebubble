@@ -1,0 +1,55 @@
+<!-- @dsCard group="Screens" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_tokens.css">
+<style>
+  body { display: flex; gap: 28px; padding: 24px; justify-content: center; background: #fff; }
+  .phone { width: 390px; height: 780px; border-radius: 32px; overflow: hidden; background: var(--surface-container);
+           box-shadow: 0 4px 24px rgba(0,0,0,.12); display: flex; flex-direction: column; }
+  .status { height: 34px; display:flex; justify-content:space-between; align-items:center; padding:0 22px; font-size:13px; font-weight:500; }
+  .appbar { display:flex; align-items:flex-start; justify-content:space-between; padding: 2px 16px 12px; }
+  .center { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .avatar { width:38px; height:38px; border-radius:50%; background:var(--primary-container); color:var(--on-primary-container);
+            display:flex; align-items:center; justify-content:center; font-weight:500; }
+  .name { font-size:13px; font-weight:500; }
+  .iconbtn { width:40px; height:40px; display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--on-surface); }
+  .sheet { flex:1; background:var(--surface); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+           display:flex; flex-direction:column; justify-content:flex-end; padding: 16px 12px 14px; gap:2px; }
+  .day { align-self:center; font-size:12px; font-weight:500; color:var(--on-surface-variant); background:var(--surface-container-high);
+         border-radius:12px; padding:5px 12px; margin-bottom:10px; }
+  .bubble { max-width:76%; padding:10px 14px; font-size:16px; line-height:1.35; width:fit-content; position:relative; }
+  .in { background:var(--incoming); align-self:flex-start; border-radius:20px 20px 20px 4px; }
+  .in.last { border-radius:4px 20px 20px 20px; }
+  .in.last::after { content:""; position:absolute; bottom:0; left:-6px; width:12px; height:12px;
+                    background: radial-gradient(circle at 0 0, transparent 12px, var(--incoming) 12px); transform: scaleX(-1); }
+  .out { background:var(--imessage); color:#fff; align-self:flex-end; border-radius:20px 20px 4px 20px; }
+  .out.last { border-radius:20px 4px 20px 20px; }
+  .out.last::after { content:""; position:absolute; bottom:0; right:-6px; width:12px; height:12px;
+                     background: radial-gradient(circle at 0 0, transparent 12px, var(--imessage) 12px); }
+  .micro { align-self:flex-end; font-size:12px; font-weight:500; color:var(--on-surface-variant); margin:3px 6px 0 0; }
+  .gap { height: 10px; }
+  .composerwrap { padding: 10px 12px 18px; display:flex; align-items:flex-end; gap:10px; background:var(--surface-container); }
+  .plus { width:44px; height:44px; border-radius:50%; background:var(--surface-container-high); color:var(--on-surface-variant);
+          display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .field { flex:1; min-height:44px; border-radius:24px; background:var(--surface-container-high); padding:11px 18px; font-size:16px; color:var(--on-surface-variant); }
+  .send { width:44px; height:44px; }
+</style></head><body>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>▲ ▮</span></div>
+  <div class="appbar">
+    <div class="iconbtn">←</div>
+    <div class="center"><div class="avatar">M</div><div class="name">Maya Chen</div></div>
+    <div class="iconbtn">⋮</div>
+  </div>
+  <div class="sheet">
+    <div class="day">Today</div>
+    <div class="bubble in">Are you coming tonight?</div>
+    <div class="bubble in last">We're starting at 7 🍕</div>
+    <div class="gap"></div>
+    <div class="bubble out">Yes! Leaving soon</div>
+    <div class="bubble out last">Save me a slice</div>
+    <div class="micro">Delivered</div>
+  </div>
+  <div class="composerwrap"><div class="plus">+</div><div class="field">Message</div><div class="send"></div></div>
+</div>
+</body></html>

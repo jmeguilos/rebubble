@@ -1,0 +1,25 @@
+/* Rebubble design tokens — source of truth for the Compose theme.
+   Light scheme derived from ultramarine seed #2D4FE0; iMessage/SMS are semantic constants. */
+:root {
+  --primary: #2D4FE0; --on-primary: #FFFFFF;
+  --primary-container: #DDE1FF; --on-primary-container: #00105C;
+  --surface: #FBF8FF; --surface-container: #EFEDF7; --surface-container-high: #E9E7F0;
+  --on-surface: #1B1B21; --on-surface-variant: #46464F; --outline: #777680;
+  --error: #BA1A1A; --error-container: #FFDAD6; --on-error-container: #410002;
+  --imessage: #0B84FE; --sms: #34C759; --on-bubble: #FFFFFF;
+  --incoming: var(--surface-container-high); --on-incoming: var(--on-surface);
+  --radius-sheet: 28px; --radius-bubble: 20px; --radius-tight: 4px;
+  --font-display: "Manrope", system-ui, sans-serif;
+  --font-body: "Roboto", system-ui, sans-serif;
+}
+.dark {
+  --primary: #B9C3FF; --on-primary: #00184A;
+  --primary-container: #1E3163; --on-primary-container: #DDE1FF;
+  --surface: #131318; --surface-container: #1F1F25; --surface-container-high: #29282F;
+  --on-surface: #E4E1E9; --on-surface-variant: #C7C5D0; --outline: #91909A;
+  --error: #FFB4AB; --error-container: #93000A; --on-error-container: #FFDAD6;
+  --incoming: #29282F; --on-incoming: #E4E1E9;
+}
+* { margin: 0; box-sizing: border-box; }
+body { font-family: var(--font-body); color: var(--on-surface); background: var(--surface-container); }
+h1,h2,h3,.display { font-family: var(--font-display); }

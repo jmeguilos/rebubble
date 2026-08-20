@@ -1,0 +1,30 @@
+<!-- @dsCard group="Screens" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_tokens.css">
+<style>
+  body { display:flex; justify-content:center; padding:24px; background:#fff; }
+  .phone { width:390px; height:780px; border-radius:32px; overflow:hidden; background:var(--surface-container);
+           box-shadow:0 4px 24px rgba(0,0,0,.12); display:flex; flex-direction:column; padding:34px 24px 26px; }
+  .hero { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; text-align:center; }
+  .logo { width:96px; height:96px; border-radius:32px 32px 8px 32px; background:var(--primary); color:#fff;
+          display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:600; font-size:44px; }
+  .wordmark { font-family:var(--font-display); font-weight:600; font-size:32px; }
+  .copy { font-size:16px; color:var(--on-surface-variant); max-width:280px; line-height:1.45; }
+  .buttons { display:flex; flex-direction:column; gap:14px; }
+  .btn { height:56px; border-radius:28px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:500; }
+  .primary { background:var(--primary); color:#fff; }
+  .tonal { background:var(--primary-container); color:var(--on-primary-container); }
+</style></head><body>
+<div class="phone">
+  <div class="hero">
+    <div class="logo">R</div>
+    <div class="wordmark">Rebubble</div>
+    <div class="copy">Connect to your BlueBubbles server to sync conversations.</div>
+  </div>
+  <div class="buttons">
+    <div class="btn primary">Scan QR code</div>
+    <div class="btn tonal">Enter address manually</div>
+  </div>
+</div>
+</body></html>
