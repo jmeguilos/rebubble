@@ -6,6 +6,7 @@ import app.rebubble.data.remote.dto.Envelope
 import app.rebubble.data.remote.dto.MessageDto
 import app.rebubble.data.remote.dto.ServerInfoDto
 import app.rebubble.data.remote.dto.requests.ChatQueryRequest
+import app.rebubble.data.remote.dto.requests.CreateChatRequest
 import app.rebubble.data.remote.dto.requests.FcmDeviceRequest
 import app.rebubble.data.remote.dto.requests.MessageQueryRequest
 import app.rebubble.data.remote.dto.requests.SendTextRequest
@@ -41,6 +42,16 @@ interface BlueBubblesApi {
 
     @POST("chat/query")
     suspend fun queryChats(@Body b: ChatQueryRequest): Envelope<List<ChatDto>>
+
+    /**
+     * Creates a new chat (and, when [CreateChatRequest.message] is non-blank, sends the first
+     * message in the same call). `data` is the created [ChatDto] itself -- `chatRouter.ts`
+     * `create()` (lines 218-225) serializes with `includeParticipants: true, includeMessages:
+     * true`, embedding the sent message(s) on [ChatDto.messages] rather than returning a
+     * separate top-level message field. See [ChatDto.messages]'s KDoc.
+     */
+    @POST("chat/new")
+    suspend fun createChat(@Body b: CreateChatRequest): Envelope<ChatDto>
 
     @GET("chat/{guid}/message")
     suspend fun chatMessages(

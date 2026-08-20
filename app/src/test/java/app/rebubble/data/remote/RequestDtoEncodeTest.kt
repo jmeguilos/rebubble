@@ -1,6 +1,7 @@
 package app.rebubble.data.remote
 
 import app.rebubble.data.remote.dto.requests.ChatQueryRequest
+import app.rebubble.data.remote.dto.requests.CreateChatRequest
 import app.rebubble.data.remote.dto.requests.FcmDeviceRequest
 import app.rebubble.data.remote.dto.requests.MessageQueryRequest
 import app.rebubble.data.remote.dto.requests.SendTextRequest
@@ -22,6 +23,8 @@ import org.junit.Test
  *   DBWhereItem shape in databases/imessage/types.ts lines 15-18
  * - SendTextRequest -> messageRouter.ts sendText(), lines 238-241
  * - FcmDeviceRequest -> fcmRouter.ts registerDevice(), line 36
+ * - CreateChatRequest -> chatRouter.ts create(), lines 193-215; chatValidator.ts createRules,
+ *   lines 43-51
  */
 class RequestDtoEncodeTest {
 
@@ -70,6 +73,35 @@ class RequestDtoEncodeTest {
     fun `FcmDeviceRequest round-trips name and identifier`() {
         val request = FcmDeviceRequest(name = "pixel-8", identifier = "fcm-token-abc")
         val decoded = json.decodeFromString<FcmDeviceRequest>(json.encodeToString(request))
+        assertEquals(request, decoded)
+    }
+
+    @Test
+    fun `CreateChatRequest round-trips addresses and message, defaulting method, service, and tempGuid`() {
+        val request = CreateChatRequest(
+            addresses = listOf("+15559998888"),
+            message = "Hey, it's Jules",
+        )
+        val encoded = json.encodeToString(request)
+        val decoded = json.decodeFromString<CreateChatRequest>(encoded)
+        assertEquals(request, decoded)
+        assertEquals("iMessage", decoded.service)
+        assertEquals(null, decoded.method)
+        assertEquals(null, decoded.tempGuid)
+        assertTrue(encoded.contains("\"addresses\""))
+        assertTrue(encoded.contains("\"message\""))
+    }
+
+    @Test
+    fun `CreateChatRequest round-trips explicit method, service, and tempGuid`() {
+        val request = CreateChatRequest(
+            addresses = listOf("+15559998888", "friend@example.com"),
+            message = "Group hello",
+            method = "private-api",
+            service = "SMS",
+            tempGuid = "temp-abc",
+        )
+        val decoded = json.decodeFromString<CreateChatRequest>(json.encodeToString(request))
         assertEquals(request, decoded)
     }
 }

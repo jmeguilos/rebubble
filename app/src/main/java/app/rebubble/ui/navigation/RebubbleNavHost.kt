@@ -21,6 +21,7 @@ import androidx.navigation.navArgument
 import app.rebubble.data.repo.ServerConfigRepository
 import app.rebubble.ui.chat.ChatRoute
 import app.rebubble.ui.chatlist.ChatListRoute
+import app.rebubble.ui.newchat.NewChatRoute
 import app.rebubble.ui.onboarding.OnboardingRoute
 import app.rebubble.ui.settings.SettingsRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -93,6 +94,9 @@ fun RebubbleNavHost(
                 onSettingsClick = {
                     navController.navigate(RebubbleRoutes.SETTINGS)
                 },
+                onStartChatClick = {
+                    navController.navigate(RebubbleRoutes.NEW_CHAT)
+                },
             )
         }
         composable(
@@ -109,6 +113,18 @@ fun RebubbleNavHost(
         composable(RebubbleRoutes.SETTINGS) {
             SettingsRoute(
                 onBack = { navController.popBackStack() },
+            )
+        }
+        composable(RebubbleRoutes.NEW_CHAT) {
+            NewChatRoute(
+                onBack = { navController.popBackStack() },
+                onChatCreated = { guid ->
+                    // Replace new-chat in the back stack so back from the new conversation
+                    // lands on the chat list, not on the (now-stale) compose form.
+                    navController.navigate(RebubbleRoutes.chat(guid)) {
+                        popUpTo(RebubbleRoutes.NEW_CHAT) { inclusive = true }
+                    }
+                },
             )
         }
     }

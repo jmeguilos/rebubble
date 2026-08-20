@@ -28,11 +28,14 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -66,6 +69,7 @@ import app.rebubble.ui.common.SearchConversationsPill
 import app.rebubble.ui.common.SyncStatusChip
 import app.rebubble.ui.theme.ListSheetTopShape
 import app.rebubble.ui.theme.RebubbleTheme
+import app.rebubble.ui.theme.StartChatFabShape
 import coil3.ImageLoader
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
@@ -81,6 +85,7 @@ private const val MaxUnreadBadgeCount = 99
 fun ChatListRoute(
     onChatClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
+    onStartChatClick: () -> Unit,
     viewModel: ChatListViewModel = hiltViewModel(),
     imageLoader: ImageLoader = rememberAppImageLoader(),
 ) {
@@ -89,6 +94,7 @@ fun ChatListRoute(
         uiState = uiState,
         onChatClick = onChatClick,
         onSettingsClick = onSettingsClick,
+        onStartChatClick = onStartChatClick,
         onFilterSelected = viewModel::onFilterSelected,
         imageLoader = imageLoader,
     )
@@ -111,6 +117,7 @@ fun ChatListScreen(
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
     onSettingsClick: () -> Unit = {},
+    onStartChatClick: () -> Unit = {},
     onFilterSelected: (ChatFilter) -> Unit = {},
     nowMs: Long = System.currentTimeMillis(),
 ) {
@@ -129,6 +136,14 @@ fun ChatListScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        // Always visible (no hide-on-scroll): the list is a single non-collapsing LazyColumn with
+        // no nested-scroll-connected top bar to drive FloatingActionButtonDefaults.scrollBehavior,
+        // and the card's FAB is anchored to the phone frame in every shown state, not tied to
+        // scroll position -- simplest thing that matches the design without inventing scroll
+        // plumbing this screen doesn't otherwise need.
+        floatingActionButton = {
+            StartChatFab(onClick = onStartChatClick)
+        },
     ) { _ ->
         // Tonal Scaffold bg extends under the status bar; only the header consumes status insets.
         Column(modifier = Modifier.fillMaxSize()) {
@@ -261,6 +276,37 @@ private fun SettingsAvatarButton(
             )
         }
     }
+}
+
+/**
+ * "Start chat" extended FAB (design/screens/chat-list.html `.fab`: primaryContainer /
+ * onPrimaryContainer, 18dp corner radius, Material Symbol "chat" + label, bottom-end anchored).
+ * Icon is [Icons.AutoMirrored.Outlined.Chat] -- the closest Compose material icon to the design's
+ * Material Symbol "chat" glyph; auto-mirrored since the bubble's tail should flip under RTL.
+ */
+@Composable
+private fun StartChatFab(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ExtendedFloatingActionButton(
+        onClick = onClick,
+        modifier = modifier
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(end = 4.dp, bottom = 4.dp),
+        shape = StartChatFabShape,
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 3.dp),
+        icon = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.Chat,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+        },
+        text = { Text("Start chat") },
+    )
 }
 
 /**

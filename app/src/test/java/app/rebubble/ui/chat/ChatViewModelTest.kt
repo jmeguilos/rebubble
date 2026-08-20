@@ -113,6 +113,8 @@ class ChatViewModelTest {
             chatDao = db.chatDao(),
             handleDao = db.handleDao(),
             contactDao = db.contactDao(),
+            api = api,
+            ingestor = ingestor,
         )
 
         runBlocking {

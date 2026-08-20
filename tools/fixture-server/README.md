@@ -27,10 +27,14 @@ The Android emulator reaches the host machine at `10.0.2.2`. In onboarding, use:
 | `FIXTURE_PASSWORD=…` | Auth password for `?guid=` and socket handshake. |
 | `PORT=…` | Listen port (default `12346`). |
 
+## Endpoints
+
+- `POST /api/v1/chat/new` body `{ "addresses": string[], "message"?: string, "service"?: "iMessage"|"SMS", "method"?: string, "tempGuid"?: string }` — "Start chat" flow. Creates a new chat (guid `<service>;-;<address>` for a single address, `<service>;+;chatfixture<n>` for a group) or reuses one that already exists for that guid, and — when `message` is non-blank — sends it in the same call. `data` is the chat itself, with the sent message embedded on `data.messages[]` (not a separate field, matching the real server's `chatRouter.ts create()`), `tempGuid` echoed back onto it just like `POST /message/text`.
+
 ## Test hooks
 
 - `POST /_fixture/receive` body `{ "chatGuid"?: string, "text"?: string }` — stores an incoming message and emits socket `new-message`.
-- `POST /_fixture/reset` — reseeds chats/messages and resets fail counters.
+- `POST /_fixture/reset` — reseeds chats/messages, drops any chat created via `POST /chat/new`, and resets fail counters.
 
 Default DM chat guid: `iMessage;-;+15550100001`  
 Group chat: `iMessage;+;chatfixturefriends` (display name **Fixture Friends**).
@@ -42,4 +46,6 @@ curl -s "http://127.0.0.1:12346/api/v1/server/info?guid=fixture-pass"
 curl -s "http://127.0.0.1:12346/api/v1/server/info"   # expect 401
 curl -s -X POST "http://127.0.0.1:12346/api/v1/chat/query?guid=fixture-pass" -H 'Content-Type: application/json' -d '{}'
 curl -s -X POST "http://127.0.0.1:12346/_fixture/receive" -H 'Content-Type: application/json' -d '{"text":"hi"}'
+curl -s -X POST "http://127.0.0.1:12346/api/v1/chat/new?guid=fixture-pass" -H 'Content-Type: application/json' \
+  -d '{"addresses":["+15559998888"],"message":"Hey, it'"'"'s Jules","service":"iMessage"}'
 ```

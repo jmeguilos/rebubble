@@ -7,6 +7,8 @@
  * - message-page.json / sent-message-with-tempguid.json → MessageDto field set
  * - socket-new-message.json → new-message payload includes chats[]
  * - error-envelope.json → error { type, message } shape for 4xx/5xx
+ * - create-chat-response.json → POST /api/v1/chat/new response shape: the created chat with its
+ *   sent message embedded on `data.messages[]` (tempGuid echoed), not a separate top-level field
  */
 "use strict";
 
@@ -32,6 +34,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 let nextRowId = 100;
 let nextMsgSeq = 1;
 let nextAttSeq = 1;
+let nextChatRowId = 20;
 let sendFailRemaining = FAIL_SEND_BUDGET;
 /** @type {Map<string, object>} */
 const messagesByGuid = new Map();
@@ -64,7 +67,7 @@ function requireGuid(req, res, next) {
   next();
 }
 
-const CHATS = [
+let CHATS = [
   {
     originalROWID: 12,
     guid: DM_GUID,
@@ -151,9 +154,11 @@ function makeMessage({ text, chatGuid, isFromMe, tempGuid, attachments }) {
 function seedInitial() {
   messages = [];
   messagesByGuid.clear();
+  CHATS = CHATS.slice(0, 2); // drop any chats created via POST /api/v1/chat/new
   nextRowId = 100;
   nextMsgSeq = 1;
   nextAttSeq = 1;
+  nextChatRowId = 20;
   sendFailRemaining = FAIL_SEND_BUDGET;
   // Seeded history (message-page.json field shapes); watermark init uses max ROWID.
   makeMessage({
@@ -221,6 +226,70 @@ app.post("/api/v1/chat/query", requireGuid, (req, res) => {
       limit,
     }),
   );
+});
+
+// "Start chat" flow (chatRouter.ts create() shape): creates (or reuses) a chat for `addresses`
+// and, when `message` is non-blank, sends it in the same call. The response embeds the sent
+// message on `data.messages[]` -- not a separate top-level field -- with `tempGuid` echoed back
+// exactly like `POST /message/text`, matching create-chat-response.json.
+app.post("/api/v1/chat/new", requireGuid, (req, res) => {
+  const { addresses, message, service, tempGuid } = req.body || {};
+  if (!Array.isArray(addresses) || addresses.length === 0) {
+    return res.status(400).json(
+      err(400, "You've made a bad request! Please check your request params & body", "Validation Error", "addresses required"),
+    );
+  }
+
+  const chatService = service || "iMessage";
+  const isGroup = addresses.length > 1;
+  const chatIdentifier = isGroup ? `chatfixture${nextChatRowId}` : String(addresses[0]);
+  const guid = isGroup ? `${chatService};+;${chatIdentifier}` : `${chatService};-;${addresses[0]}`;
+
+  let chat = CHATS.find((c) => c.guid === guid);
+  if (!chat) {
+    chat = {
+      originalROWID: nextChatRowId++,
+      guid,
+      style: isGroup ? 43 : 45,
+      chatIdentifier,
+      displayName: null,
+      isArchived: false,
+      participants: addresses.map((address, i) => ({
+        originalROWID: 900 + i,
+        address: String(address),
+        service: chatService,
+      })),
+    };
+    CHATS.push(chat);
+  }
+
+  let sentMessage = null;
+  if (message != null && String(message).length > 0) {
+    const stored = makeMessage({
+      text: String(message),
+      chatGuid: chat.guid,
+      isFromMe: true,
+      tempGuid: tempGuid || null,
+    });
+    // The real server's create() response embeds the message without chats[] (its
+    // serializer config hardcodes includeChats:false for this path) -- copy so the stored
+    // row (used by GET /chat/:guid/message et al) keeps its own chats[].
+    const { chats: _omit, ...rest } = stored;
+    sentMessage = rest;
+  }
+
+  const data = {
+    originalROWID: chat.originalROWID,
+    guid: chat.guid,
+    style: chat.style,
+    chatIdentifier: chat.chatIdentifier,
+    displayName: chat.displayName,
+    isArchived: chat.isArchived,
+    participants: chat.participants,
+    messages: sentMessage ? [sentMessage] : [],
+  };
+
+  res.json(ok(data, "Successfully created chat!"));
 });
 
 app.post("/api/v1/message/query", requireGuid, (req, res) => {

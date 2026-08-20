@@ -8,6 +8,7 @@ object RebubbleRoutes {
     const val CHATS = "chats"
     const val CHAT = "chat/{guid}"
     const val SETTINGS = "settings"
+    const val NEW_CHAT = "new-chat"
 
     fun chat(guid: String): String = "chat/${Uri.encode(guid)}"
 }

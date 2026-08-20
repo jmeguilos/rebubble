@@ -6,12 +6,16 @@ import app.rebubble.data.local.entity.ChatEntity
 import app.rebubble.data.local.entity.ChatHandleCrossRef
 import app.rebubble.data.local.entity.ContactEntity
 import app.rebubble.data.local.entity.HandleEntity
+import app.rebubble.data.remote.api.FakeServerCredentialsProvider
+import app.rebubble.data.remote.api.testBlueBubblesApi
 import app.rebubble.data.repo.ChatListItem
 import app.rebubble.data.repo.ChatRepository
+import app.rebubble.data.sync.MessageIngestor
 import app.rebubble.data.sync.SyncOutcome
 import app.rebubble.data.sync.SyncStatus
 import app.rebubble.data.logging.RingBufferLogger;
 import app.rebubble.data.sync.SyncStatusTracker
+import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -41,10 +45,23 @@ class ChatListViewModelTest {
     fun setUp() {
         Dispatchers.setMain(Dispatchers.Unconfined)
         db = InMemoryDatabaseFactory.create()
+        val credentials = FakeServerCredentialsProvider(
+            urlValue = "http://127.0.0.1:0/",
+            passwordValue = "pw",
+        )
         repo = ChatRepository(
             chatDao = db.chatDao(),
             handleDao = db.handleDao(),
             contactDao = db.contactDao(),
+            api = testBlueBubblesApi(credentials),
+            ingestor = MessageIngestor(
+                db = db,
+                messageDao = db.messageDao(),
+                chatDao = db.chatDao(),
+                attachmentDao = db.attachmentDao(),
+                handleDao = db.handleDao(),
+                activeChatTracker = ActiveChatTracker(),
+            ),
         )
         tracker = SyncStatusTracker(RingBufferLogger())
     }

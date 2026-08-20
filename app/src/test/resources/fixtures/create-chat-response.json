@@ -1,0 +1,43 @@
+{
+  "_source": "chatRouter.ts create() lines 206-234 (ChatSerializer.serialize({chat, config:{includeParticipants:true,includeMessages:true}}); tempGuid re-injected onto data.messages[] at lines 228-231) -- packages/server/src/server/api/http/api/v1/routers/chatRouter.ts; ChatSerializer.ts convert() lines 54-78 for base/participants/messages fields; MessageSerializer.ts convert() lines 130-163 for the embedded message.",
+  "status": 200,
+  "message": "Successfully created chat!",
+  "data": {
+    "originalROWID": 14,
+    "guid": "iMessage;-;+15559998888",
+    "style": 45,
+    "chatIdentifier": "+15559998888",
+    "displayName": null,
+    "isArchived": false,
+    "participants": [
+      { "originalROWID": 6, "address": "+15559998888", "service": "iMessage" }
+    ],
+    "messages": [
+      {
+        "originalROWID": 701,
+        "tempGuid": "temp-new-chat-9f0a-1234567890ab",
+        "guid": "p:0/B2C3D4E5-0000-0000-0000-000000000701",
+        "text": "Hey, it's Jules",
+        "subject": null,
+        "error": 0,
+        "dateCreated": 1752347000000,
+        "dateRead": null,
+        "dateDelivered": null,
+        "isFromMe": true,
+        "handle": null,
+        "handleId": 0,
+        "attachments": [],
+        "itemType": 0,
+        "groupTitle": null,
+        "groupActionType": 0,
+        "associatedMessageGuid": null,
+        "associatedMessageType": null,
+        "threadOriginatorGuid": null,
+        "threadOriginatorPart": null,
+        "expressiveSendStyleId": null,
+        "dateEdited": null,
+        "dateRetracted": null
+      }
+    ]
+  }
+}
