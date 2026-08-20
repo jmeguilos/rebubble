@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import app.rebubble.data.local.entity.AttachmentEntity
 import app.rebubble.data.local.entity.MessageEntity
 import app.rebubble.data.local.entity.SendStatus
+import app.rebubble.ui.theme.RebubbleMotion
 import app.rebubble.ui.theme.OnBubble
 import app.rebubble.ui.theme.OwnIMessageBubble
 import app.rebubble.ui.theme.OwnSmsBubble
@@ -82,7 +83,7 @@ fun MessageBubble(
     val fromMe = item.message.isFromMe
     val maxWidth = (LocalConfiguration.current.screenWidthDp * 0.76f).dp
     val density = LocalDensity.current
-    val motion = MaterialTheme.motionScheme
+    val motion = RebubbleMotion
     val shape = remember(fromMe, item.showTail, item.isFirstInRun, item.isLastInRun, density) {
         BubbleShape(
             fromMe = fromMe,

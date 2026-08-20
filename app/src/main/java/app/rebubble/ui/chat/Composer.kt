@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.rebubble.ui.theme.RebubbleMotion
 import app.rebubble.ui.theme.RebubbleTheme
 
 /** Card composer control diameter. */
@@ -63,7 +64,7 @@ fun Composer(
 ) {
     var text by remember { mutableStateOf(initialText) }
     val keyboard = LocalSoftwareKeyboardController.current
-    val motion = MaterialTheme.motionScheme
+    val motion = RebubbleMotion
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri ->

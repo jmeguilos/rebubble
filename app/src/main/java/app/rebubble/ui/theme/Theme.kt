@@ -2,9 +2,7 @@ package app.rebubble.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -73,7 +71,6 @@ private val DarkColorScheme = darkColorScheme(
     onErrorContainer = OnErrorContainerDark,
 )
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RebubbleTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -89,9 +86,8 @@ fun RebubbleTheme(
         else -> LightColorScheme
     }
 
-    MaterialExpressiveTheme(
+    MaterialTheme(
         colorScheme = colorScheme,
-        motionScheme = MotionScheme.expressive(),
         typography = Typography,
         shapes = RebubbleShapes,
         content = content,
