@@ -1,6 +1,9 @@
 package app.rebubble.ui.chatlist
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,31 +12,34 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -41,6 +47,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,17 +60,17 @@ import app.rebubble.data.repo.ChatListItem
 import app.rebubble.data.sync.SyncStatus
 import app.rebubble.ui.common.ChatAvatar
 import app.rebubble.ui.common.ChatAvatarSizeLarge
-import app.rebubble.ui.common.SearchConversationsPill
 import app.rebubble.ui.common.SyncStatusChip
-import app.rebubble.ui.theme.ListSheetTopShape
 import app.rebubble.ui.theme.RebubbleTheme
 import coil3.ImageLoader
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 
 private const val SEARCH_COMING_SOON = "Search is coming soon."
+private const val COMPOSE_COMING_SOON = "New chats are coming soon."
 private val RowMinHeight = 76.dp
-private val HeaderIconSize = 32.dp
+/** Reserved for a future bottom navigation bar. */
+private val FutureNavReserve = 0.dp
 
 @Composable
 fun ChatListRoute(
@@ -90,6 +98,7 @@ internal fun rememberAppImageLoader(): ImageLoader {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
     uiState: ChatListUiState,
@@ -108,126 +117,117 @@ fun ChatListScreen(
         is ChatListUiState.Loaded -> uiState.syncStatus
     }
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val motion = MaterialTheme.motionScheme
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { _ ->
-        // Tonal Scaffold bg extends under the status bar; only the header consumes status insets.
-        Column(modifier = Modifier.fillMaxSize()) {
-            ChatListHeader(
-                onSettingsClick = onSettingsClick,
-                modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .consumeWindowInsets(WindowInsets.statusBars),
-            )
-
-            SearchConversationsPill(
-                onClick = {
-                    scope.launch {
-                        snackbarHostState.showSnackbar(SEARCH_COMING_SOON)
-                    }
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Text(
+                        text = "Messages",
+                        style = MaterialTheme.typography.headlineMedium,
+                    )
                 },
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-
-            SyncStatusChipSlot(status = syncStatus)
-
-            // Sheet paints to the physical bottom edge; list/empty content pads for nav bars.
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                shape = ListSheetTopShape,
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-            ) {
-                when (uiState) {
-                    ChatListUiState.Loading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = navBarBottom),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                        }
-                    }
-                    is ChatListUiState.Empty -> {
-                        ChatListEmptyState(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = navBarBottom),
+                actions = {
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(SEARCH_COMING_SOON)
+                            }
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = "Search",
                         )
                     }
-                    is ChatListUiState.Loaded -> {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp + navBarBottom),
-                        ) {
-                            items(
-                                items = uiState.items,
-                                key = { it.guid },
-                            ) { item ->
-                                ChatListRow(
-                                    item = item,
-                                    nowMs = nowMs,
-                                    imageLoader = imageLoader,
-                                    onClick = { onChatClick(item.guid) },
-                                )
-                            }
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "Settings",
+                        )
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(COMPOSE_COMING_SOON)
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shape = MaterialTheme.shapes.large,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Edit,
+                    contentDescription = "New chat",
+                )
+            }
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            SyncStatusChipSlot(status = syncStatus)
+
+            when (uiState) {
+                ChatListUiState.Loading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = navBarBottom + FutureNavReserve),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                    }
+                }
+                is ChatListUiState.Empty -> {
+                    ChatListEmptyState(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = navBarBottom + FutureNavReserve),
+                    )
+                }
+                is ChatListUiState.Loaded -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            bottom = 88.dp + navBarBottom + FutureNavReserve,
+                        ),
+                    ) {
+                        items(
+                            items = uiState.items,
+                            key = { it.guid },
+                        ) { item ->
+                            ChatListRow(
+                                item = item,
+                                nowMs = nowMs,
+                                imageLoader = imageLoader,
+                                onClick = { onChatClick(item.guid) },
+                                pressScaleSpec = motion.fastSpatialSpec(),
+                            )
                         }
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ChatListHeader(
-    onSettingsClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            text = "Rebubble",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        SettingsAvatarButton(onClick = onSettingsClick)
-    }
-}
-
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-@Composable
-private fun SettingsAvatarButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.size(HeaderIconSize),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = Icons.Outlined.Settings,
-                contentDescription = "Settings",
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
@@ -238,7 +238,7 @@ private fun SyncStatusChipSlot(
     modifier: Modifier = Modifier,
 ) {
     if (status is SyncStatus.Idle) {
-        Spacer(modifier = modifier.height(12.dp))
+        Spacer(modifier = modifier.height(4.dp))
         return
     }
     Box(
@@ -287,6 +287,7 @@ private fun ChatListRow(
     nowMs: Long,
     imageLoader: ImageLoader,
     onClick: () -> Unit,
+    pressScaleSpec: androidx.compose.animation.core.FiniteAnimationSpec<Float>,
     modifier: Modifier = Modifier,
 ) {
     val timestamp by remember(item.lastMessageDate, nowMs) {
@@ -295,12 +296,26 @@ private fun ChatListRow(
             formatRelativeTimestamp(nowMs, then)
         }
     }
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.98f else 1f,
+        animationSpec = pressScaleSpec,
+        label = "chatRowPress",
+    )
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(RowMinHeight)
-            .clickable(onClick = onClick)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                onClick = onClick,
+            )
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -310,16 +325,31 @@ private fun ChatListRow(
             isGroup = item.isGroup,
             imageLoader = imageLoader,
             size = ChatAvatarSizeLarge,
+            hueKey = item.guid,
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (timestamp.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = timestamp,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             if (!item.lastMessagePreview.isNullOrBlank()) {
                 Text(
                     text = item.lastMessagePreview,
@@ -329,14 +359,6 @@ private fun ChatListRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-        }
-        if (timestamp.isNotEmpty()) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = timestamp,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

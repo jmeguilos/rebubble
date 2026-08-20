@@ -1,9 +1,12 @@
 package app.rebubble.ui.chat
 
 import android.animation.ValueAnimator
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +27,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
@@ -39,6 +41,9 @@ import androidx.compose.ui.unit.dp
 import app.rebubble.data.local.entity.AttachmentEntity
 import app.rebubble.data.local.entity.MessageEntity
 import app.rebubble.data.local.entity.SendStatus
+import app.rebubble.ui.theme.OnBubble
+import app.rebubble.ui.theme.OwnIMessageBubble
+import app.rebubble.ui.theme.OwnSmsBubble
 import app.rebubble.ui.theme.RebubbleTheme
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
@@ -49,17 +54,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** iMessage own-bubble blue (chat screen only — not Material primary). */
-val OwnIMessageBubble = Color(0xFF0B84FE)
-
-/** SMS own-bubble green (chat.guid starts with `SMS;`). */
-val OwnSmsBubble = Color(0xFF34C759)
-
 /** Own bubbles still in-flight ([SendStatus.SENDING]) render at reduced emphasis vs SENT. */
 internal const val SendingBubbleAlpha = 0.65f
 
 private val BubbleOuterRadius = 20.dp
-private val BubbleInnerRadius = 4.dp
+/** Card `--radius-tight`. */
+private val BubbleInnerRadius = 5.dp
 private val TailWidth = 8.dp
 private val TailHeight = 6.dp
 private val TimeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
@@ -82,6 +82,7 @@ fun MessageBubble(
     val fromMe = item.message.isFromMe
     val maxWidth = (LocalConfiguration.current.screenWidthDp * 0.76f).dp
     val density = LocalDensity.current
+    val motion = MaterialTheme.motionScheme
     val shape = remember(fromMe, item.showTail, item.isFirstInRun, item.isLastInRun, density) {
         BubbleShape(
             fromMe = fromMe,
@@ -99,7 +100,7 @@ fun MessageBubble(
     }
     val contentColor = when {
         item.isFailed -> MaterialTheme.colorScheme.onErrorContainer
-        fromMe -> Color.White
+        fromMe -> OnBubble
         else -> MaterialTheme.colorScheme.onSurface
     }
 
@@ -113,8 +114,8 @@ fun MessageBubble(
     LaunchedEffect(item.message.guid, reduceMotion) {
         if (animateSendPop && !reduceMotion) {
             coroutineScope {
-                launch { scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) }
-                launch { alpha.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) }
+                launch { scale.animateTo(1f, motion.fastSpatialSpec()) }
+                launch { alpha.animateTo(1f, motion.fastEffectsSpec()) }
             }
         } else {
             scale.snapTo(1f)
@@ -202,10 +203,16 @@ fun MessageBubble(
                 text = receiptLabel,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp, end = 4.dp),
+                modifier = Modifier.padding(top = 4.dp, end = 8.dp),
             )
         }
-        if (selected) {
+        AnimatedVisibility(
+            visible = selected,
+            enter = expandVertically(animationSpec = motion.fastSpatialSpec()) +
+                fadeIn(animationSpec = motion.fastEffectsSpec()),
+            exit = shrinkVertically(animationSpec = motion.fastSpatialSpec()) +
+                fadeOut(animationSpec = motion.fastEffectsSpec()),
+        ) {
             Text(
                 text = formatBubbleTime(item.message.dateCreated),
                 style = MaterialTheme.typography.labelSmall,

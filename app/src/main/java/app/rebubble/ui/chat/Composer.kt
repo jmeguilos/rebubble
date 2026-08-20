@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -44,7 +45,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.rebubble.ui.theme.RebubbleTheme
-import app.rebubble.ui.theme.SearchPillShape
+
+/** Card composer control diameter. */
+private val ComposerControlSize = 44.dp
+
+/** Card `.field` border radius. */
+private val ComposerFieldShape = RoundedCornerShape(24.dp)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +63,7 @@ fun Composer(
 ) {
     var text by remember { mutableStateOf(initialText) }
     val keyboard = LocalSoftwareKeyboardController.current
+    val motion = MaterialTheme.motionScheme
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
@@ -78,9 +85,9 @@ fun Composer(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 20.dp),
         verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Surface(
             onClick = {
@@ -88,7 +95,7 @@ fun Composer(
                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
                 )
             },
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(ComposerControlSize),
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
@@ -106,14 +113,14 @@ fun Composer(
             onValueChange = { text = it },
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 44.dp),
+                .heightIn(min = ComposerControlSize),
             placeholder = {
                 Text(
                     text = placeholder,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
-            shape = SearchPillShape,
+            shape = ComposerFieldShape,
             maxLines = 6,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
             keyboardActions = KeyboardActions(onSend = { send() }),
@@ -126,10 +133,14 @@ fun Composer(
                 disabledIndicatorColor = Color.Transparent,
             ),
         )
-        // Fixed slot so the pill field does not resize when the send button appears.
+        // Fixed slot so the field does not resize when the send button appears.
         SendButtonSlot(
             visible = canSend,
             onSend = { send() },
+            enterFade = motion.fastEffectsSpec(),
+            enterScale = motion.fastSpatialSpec(),
+            exitFade = motion.fastEffectsSpec(),
+            exitScale = motion.fastSpatialSpec(),
         )
     }
 }
@@ -138,19 +149,23 @@ fun Composer(
 private fun SendButtonSlot(
     visible: Boolean,
     onSend: () -> Unit,
+    enterFade: androidx.compose.animation.core.FiniteAnimationSpec<Float>,
+    enterScale: androidx.compose.animation.core.FiniteAnimationSpec<Float>,
+    exitFade: androidx.compose.animation.core.FiniteAnimationSpec<Float>,
+    exitScale: androidx.compose.animation.core.FiniteAnimationSpec<Float>,
 ) {
     Box(
-        modifier = Modifier.size(44.dp),
+        modifier = Modifier.size(ComposerControlSize),
         contentAlignment = Alignment.Center,
     ) {
         AnimatedVisibility(
             visible = visible,
-            enter = fadeIn() + scaleIn(),
-            exit = fadeOut() + scaleOut(),
+            enter = fadeIn(animationSpec = enterFade) + scaleIn(animationSpec = enterScale),
+            exit = fadeOut(animationSpec = exitFade) + scaleOut(animationSpec = exitScale),
         ) {
             FilledIconButton(
                 onClick = onSend,
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier.size(ComposerControlSize),
                 shape = CircleShape,
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.primary,

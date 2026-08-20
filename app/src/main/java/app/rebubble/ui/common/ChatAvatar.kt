@@ -1,6 +1,7 @@
 package app.rebubble.ui.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -16,9 +17,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.rebubble.ui.theme.avatarHueFor
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import java.io.File
@@ -26,13 +30,17 @@ import java.io.File
 /** Default list-row avatar diameter (Messages-style). */
 val ChatAvatarSizeLarge = 56.dp
 
-/** Compact avatar for the chat app bar. */
-val ChatAvatarSizeCompact = 36.dp
+/** Compact avatar for the chat app bar (card uses 40dp). */
+val ChatAvatarSizeCompact = 40.dp
 
 /**
  * Contact / group avatar: photo when [avatarPath] exists, otherwise a monogram
  * (or person glyph for phone-number-only titles). Groups use a single clipped
  * circle with a group glyph.
+ *
+ * Named-contact monograms pick a stable hue from [hueKey] (chat guid preferred).
+ * Unknown-number / person glyphs and group glyphs use surfaceContainerHighest +
+ * onSurfaceVariant (task T-A; list-card unknown-number row).
  */
 @Composable
 fun ChatAvatar(
@@ -42,6 +50,8 @@ fun ChatAvatar(
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
     size: Dp = ChatAvatarSizeLarge,
+    /** Stable key for hue selection — chat guid, or sender address for per-sender. */
+    hueKey: String = title,
 ) {
     val label = remember(title) { avatarLabelForTitle(title) }
     Box(
@@ -64,7 +74,11 @@ fun ChatAvatar(
             GroupMonogram(size = size)
         } else {
             when (label) {
-                is AvatarLabel.Initials -> MonogramCircle(initials = label.value, size = size)
+                is AvatarLabel.Initials -> MonogramCircle(
+                    initials = label.value,
+                    size = size,
+                    hueKey = hueKey,
+                )
                 AvatarLabel.Person -> PersonMonogram(size = size)
             }
         }
@@ -76,7 +90,10 @@ fun MonogramCircle(
     initials: String,
     size: Dp,
     modifier: Modifier = Modifier,
+    hueKey: String = initials,
 ) {
+    val dark = isSystemInDarkTheme()
+    val hue = remember(hueKey, dark) { avatarHueFor(hueKey, dark) }
     val textStyle = if (size >= ChatAvatarSizeLarge) {
         MaterialTheme.typography.titleMedium
     } else {
@@ -86,13 +103,16 @@ fun MonogramCircle(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .background(hue.background),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = initials,
-            style = textStyle,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            style = textStyle.copy(
+                fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = hue.foreground,
         )
     }
 }
@@ -102,43 +122,49 @@ private fun PersonMonogram(
     size: Dp,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Person,
-            contentDescription = null,
-            modifier = Modifier.size(size * 0.55f),
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-    }
+    GlyphAvatar(
+        size = size,
+        modifier = modifier,
+        icon = Icons.Outlined.Person,
+    )
 }
 
 /**
- * Group avatar: one primary-container circle with [Icons.Outlined.Group], fully
- * clipped to [size] so nothing spills at list or compact sizes.
+ * Group avatar: [Icons.Outlined.Group] on surfaceContainerHighest /
+ * onSurfaceVariant (T-A glyph treatment).
  */
 @Composable
 fun GroupMonogram(
     modifier: Modifier = Modifier,
     size: Dp = ChatAvatarSizeLarge,
 ) {
+    GlyphAvatar(
+        size = size,
+        modifier = modifier,
+        icon = Icons.Outlined.Group,
+    )
+}
+
+@Composable
+private fun GlyphAvatar(
+    size: Dp,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier,
+    background: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    foreground: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .background(background),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = Icons.Outlined.Group,
+            imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(size * 0.55f),
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            tint = foreground,
         )
     }
 }

@@ -39,13 +39,13 @@ val Typography = Typography(
     ),
     headlineLarge = TextStyle(
         fontFamily = ManropeFamily,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
         lineHeight = 36.sp,
     ),
     headlineMedium = TextStyle(
         fontFamily = ManropeFamily,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
     ),
@@ -70,7 +70,7 @@ val Typography = Typography(
     ),
     titleSmall = TextStyle(
         fontFamily = ManropeFamily,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.1.sp,

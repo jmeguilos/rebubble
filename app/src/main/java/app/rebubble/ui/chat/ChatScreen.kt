@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
@@ -60,7 +59,6 @@ import app.rebubble.data.local.entity.SendStatus
 import app.rebubble.ui.chatlist.rememberAppImageLoader
 import app.rebubble.ui.common.ChatAvatar
 import app.rebubble.ui.common.ChatAvatarSizeCompact
-import app.rebubble.ui.theme.ListSheetTopShape
 import app.rebubble.ui.theme.RebubbleTheme
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
@@ -95,6 +93,7 @@ fun ChatRoute(
 
     ChatScreen(
         uiState = uiState,
+        chatGuid = viewModel.chatGuid,
         onBack = onBack,
         onSettingsClick = onSettingsClick,
         onSendText = viewModel::sendText,
@@ -119,6 +118,8 @@ fun ChatScreen(
     onLoadOlder: () -> Unit,
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
+    /** Chat guid for avatar hue + service microlabel; not required for ViewModel. */
+    chatGuid: String = "",
     onSettingsClick: () -> Unit = {},
     onTransientErrorShown: () -> Unit = {},
     onScrollToBottomConsumed: () -> Unit = {},
@@ -165,107 +166,112 @@ fun ChatScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-    ) { _ ->
-        // Tonal Scaffold bg extends under the status bar; only the app bar consumes status insets.
-        Column(modifier = Modifier.fillMaxSize()) {
+        topBar = {
             ChatAppBar(
                 title = uiState.title,
+                isSms = uiState.isSms,
                 avatarPath = uiState.avatarPath,
                 isGroup = uiState.isGroup,
+                hueKey = chatGuid.ifBlank { uiState.title },
                 imageLoader = imageLoader,
                 onBack = onBack,
                 onSettingsClick = onSettingsClick,
-                modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .consumeWindowInsets(WindowInsets.statusBars),
+                modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
             )
-
+        },
+        bottomBar = {
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                shape = ListSheetTopShape,
-                color = MaterialTheme.colorScheme.surface,
+                color = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp,
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (uiState.loading) {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    } else {
-                        LazyColumn(
-                            state = listState,
-                            reverseLayout = true,
-                            contentPadding = PaddingValues(bottom = 12.dp),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(Unit) {
-                                    detectTapGestures(onTap = { selectedGuid = null })
+                Composer(
+                    isSms = uiState.isSms,
+                    onSendText = onSendText,
+                    onSendAttachment = onSendAttachment,
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
+                )
+            }
+        },
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
+        ) {
+            if (uiState.loading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else {
+                LazyColumn(
+                    state = listState,
+                    reverseLayout = true,
+                    contentPadding = PaddingValues(vertical = 12.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { selectedGuid = null })
+                        },
+                ) {
+                    items(
+                        items = uiState.items,
+                        key = { it.key },
+                        contentType = { it.contentType },
+                    ) { item ->
+                        when (item) {
+                            is ChatUiItem.DaySeparator -> DaySeparatorRow(label = item.label)
+                            is ChatUiItem.GroupEvent -> GroupEventRow(label = item.label)
+                            is ChatUiItem.Bubble -> MessageBubble(
+                                item = item,
+                                isSms = uiState.isSms,
+                                selected = selectedGuid == item.message.guid,
+                                showDeliveryReceipt = item.message.guid == latestOwnGuid,
+                                // Tap reveals timestamp; long-press reserved for a future menu.
+                                onLongPress = { /* reserved for actions menu */ },
+                                onTap = {
+                                    selectedGuid =
+                                        if (selectedGuid == item.message.guid) {
+                                            null
+                                        } else {
+                                            item.message.guid
+                                        }
                                 },
-                        ) {
-                            items(
-                                items = uiState.items,
-                                key = { it.key },
-                                contentType = { it.contentType },
-                            ) { item ->
-                                when (item) {
-                                    is ChatUiItem.DaySeparator -> DaySeparatorRow(label = item.label)
-                                    is ChatUiItem.GroupEvent -> GroupEventRow(label = item.label)
-                                    is ChatUiItem.Bubble -> MessageBubble(
-                                        item = item,
-                                        isSms = uiState.isSms,
-                                        selected = selectedGuid == item.message.guid,
-                                        showDeliveryReceipt = item.message.guid == latestOwnGuid,
-                                        onLongPress = {
-                                            selectedGuid =
-                                                if (selectedGuid == item.message.guid) {
-                                                    null
-                                                } else {
-                                                    item.message.guid
-                                                }
-                                        },
-                                        onTap = { selectedGuid = null },
-                                        onRetry = { onRetry(item.message.guid) },
-                                        onDownloadAttachment = onDownloadAttachment,
-                                        imageLoader = imageLoader,
-                                    )
-                                }
-                            }
+                                onRetry = { onRetry(item.message.guid) },
+                                onDownloadAttachment = onDownloadAttachment,
+                                imageLoader = imageLoader,
+                            )
                         }
                     }
                 }
             }
-
-            Composer(
-                isSms = uiState.isSms,
-                onSendText = onSendText,
-                onSendAttachment = onSendAttachment,
-                modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
-            )
         }
     }
 }
 
-/** Compact ~72dp header on the tonal layer: back · centered avatar+title · overflow. */
+/**
+ * Compact header matching the chat card: back · centered avatar + title + service · overflow.
+ */
 @Composable
 private fun ChatAppBar(
     title: String,
+    isSms: Boolean,
     avatarPath: String?,
     isGroup: Boolean,
+    hueKey: String,
     imageLoader: ImageLoader,
     onBack: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val serviceLabel = if (isSms) "Text message" else "iMessage"
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(72.dp)
-            .padding(horizontal = 4.dp),
+            .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
@@ -284,6 +290,7 @@ private fun ChatAppBar(
                 isGroup = isGroup,
                 imageLoader = imageLoader,
                 size = ChatAvatarSizeCompact,
+                hueKey = hueKey,
             )
             Text(
                 text = title,
@@ -291,6 +298,12 @@ private fun ChatAppBar(
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = serviceLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
             )
         }
         Box {
@@ -329,14 +342,14 @@ internal fun DaySeparatorRow(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .background(
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     shape = RoundedCornerShape(12.dp),
                 )
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(horizontal = 12.dp, vertical = 5.dp),
         )
     }
 }
@@ -466,6 +479,7 @@ private fun ChatScreenLightPreview() {
     RebubbleTheme(darkTheme = false, dynamicColor = false) {
         ChatScreen(
             uiState = previewThread(isSms = false),
+            chatGuid = "iMessage;-;+15551234567",
             onBack = {},
             onSendText = {},
             onSendAttachment = {},
@@ -488,6 +502,7 @@ private fun ChatScreenDarkSmsPreview() {
     RebubbleTheme(darkTheme = true, dynamicColor = false) {
         ChatScreen(
             uiState = previewThread(isSms = true),
+            chatGuid = "SMS;-;+15559876543",
             onBack = {},
             onSendText = {},
             onSendAttachment = {},
