@@ -310,6 +310,7 @@ private fun ChatListRow(
             isGroup = item.isGroup,
             imageLoader = imageLoader,
             size = ChatAvatarSizeLarge,
+            hueKey = item.guid,
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
