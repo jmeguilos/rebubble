@@ -53,7 +53,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 was off, so release APKs shipped every class the app referenced — including the
+            // whole material-icons-extended set, of which this app uses a handful of glyphs.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

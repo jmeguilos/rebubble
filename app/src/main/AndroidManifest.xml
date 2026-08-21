@@ -6,10 +6,27 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- BlueBubbles servers are commonly plain-HTTP on LAN; TLS-proxied setups still work. -->
+    <!--
+      Cleartext is permitted app-wide because BlueBubbles servers are commonly plain-HTTP on a LAN
+      at an address the user types in; TLS-proxied setups still work.
+
+      This CANNOT be narrowed with a network-security-config: <domain> accepts hostnames and
+      individual IP literals only, not CIDR ranges, so "permit cleartext on RFC1918 only" is not
+      expressible. Since the server address is arbitrary and runtime-supplied, there is no static
+      allowlist to write. The real mitigation is a runtime check — the password travels as a
+      ?guid= query parameter on every request, so plaintext HTTP to a *public* host leaks it — and
+      that is tracked separately, not solved by this attribute.
+
+      Backup is off deliberately. Credentials live in EncryptedSharedPreferences, whose master key
+      is held in the Android Keystore and is NOT part of a backup; a restored install would carry an
+      undecryptable blob and fail to read its own credentials. The message database is also a full
+      copy of the user's conversations, which is not something a self-hosted client should ship to
+      a third-party cloud by default. Nothing is lost: the app's entire state re-derives from the
+      server after onboarding.
+    -->
     <application
         android:name=".RebubbleApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
