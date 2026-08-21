@@ -12,6 +12,7 @@ import app.rebubble.data.remote.api.BlueBubblesApi
 import app.rebubble.data.remote.api.testBlueBubblesApi
 import app.rebubble.data.repo.InMemorySecretStore
 import app.rebubble.data.repo.ServerConfigRepository
+import app.rebubble.data.repo.ThemeSettingsRepository
 import app.rebubble.data.sync.SyncScheduling
 import app.rebubble.data.sync.SyncStatusTracker
 import app.rebubble.notifications.FcmSetupResult
@@ -51,6 +52,7 @@ class SettingsViewModelTest {
     private lateinit var server: MockWebServer
     private lateinit var api: BlueBubblesApi
     private lateinit var serverConfig: ServerConfigRepository
+    private lateinit var themeSettings: ThemeSettingsRepository
     private lateinit var tracker: SyncStatusTracker
     private lateinit var logger: RingBufferLogger
     private var fcmResult: FcmSetupResult = FcmSetupResult.Success("token")
@@ -69,6 +71,7 @@ class SettingsViewModelTest {
             secretStore = InMemorySecretStore(),
             apiProvider = Provider { api },
         )
+        themeSettings = ThemeSettingsRepository(dataStore = newDataStore("theme_settings"))
         api = testBlueBubblesApi(serverConfig)
         tracker = SyncStatusTracker(RingBufferLogger())
         logger = RingBufferLogger()
@@ -91,6 +94,7 @@ class SettingsViewModelTest {
 
     private fun viewModel(): SettingsViewModel = SettingsViewModel(
         serverConfigRepository = serverConfig,
+        themeSettingsRepository = themeSettings,
         syncStatusTracker = tracker,
         logger = logger,
         appContext = ApplicationProvider.getApplicationContext(),

@@ -15,12 +15,15 @@ import app.rebubble.data.local.RebubbleDatabase
 import app.rebubble.data.remote.api.BlueBubblesApi
 import app.rebubble.data.remote.api.FakeServerCredentialsProvider
 import app.rebubble.data.remote.api.testBlueBubblesApi
+import app.rebubble.data.repo.ContactRepository
 import app.rebubble.data.repo.InMemorySecretStore
 import app.rebubble.data.repo.ServerConfigRepository
 import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.runBlocking
+import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest
 import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -44,6 +47,13 @@ class SyncWorkerTest {
 
     private lateinit var context: Context
     private lateinit var server: MockWebServer
+
+    /**
+     * Dedicated server for [ContactRepository] so [Reconciler]'s new contact-sync call (once per
+     * [Reconciler.reconcile]) never steals a response queued on [server] for the chat/message
+     * pass under test.
+     */
+    private lateinit var contactServer: MockWebServer
     private lateinit var db: RebubbleDatabase
     private lateinit var ingestor: MessageIngestor
     private lateinit var watermarkStore: SyncWatermarkStore
@@ -59,6 +69,12 @@ class SyncWorkerTest {
         context = ApplicationProvider.getApplicationContext()
         server = MockWebServer()
         server.start()
+        contactServer = MockWebServer()
+        contactServer.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse =
+                MockResponse().setResponseCode(200).setBody(envelope("[]"))
+        }
+        contactServer.start()
         db = InMemoryDatabaseFactory.create()
         ingestor = MessageIngestor(
             db = db,
@@ -89,6 +105,7 @@ class SyncWorkerTest {
     @After
     fun tearDown() {
         runCatching { server.shutdown() }
+        runCatching { contactServer.shutdown() }
         db.close()
     }
 
@@ -104,6 +121,15 @@ class SyncWorkerTest {
         chatDao = db.chatDao(),
         handleDao = db.handleDao(),
         messageDao = db.messageDao(),
+        contactRepository = ContactRepository(
+            api = testBlueBubblesApi(
+                FakeServerCredentialsProvider(
+                    urlValue = contactServer.url("/").toString(),
+                    passwordValue = "pw",
+                )
+            ),
+            contactDao = db.contactDao(),
+        ),
         pageLimit = 10,
     )
 

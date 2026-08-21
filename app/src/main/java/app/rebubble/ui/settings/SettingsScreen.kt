@@ -38,6 +38,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -57,6 +60,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.rebubble.data.repo.AppColorMode
 import app.rebubble.data.sync.SyncStatus
 import app.rebubble.ui.theme.ListSheetTopShape
 import app.rebubble.ui.theme.RebubbleTheme
@@ -103,6 +107,7 @@ fun SettingsRoute(
         onSyncNow = viewModel::syncNow,
         onExportLogs = viewModel::exportLogs,
         onOpenGitHub = viewModel::openGitHub,
+        onAppColorModeSelected = viewModel::setAppColorMode,
     )
 }
 
@@ -116,6 +121,7 @@ fun SettingsScreen(
     onSyncNow: () -> Unit,
     onExportLogs: () -> Unit,
     onOpenGitHub: () -> Unit,
+    onAppColorModeSelected: (AppColorMode) -> Unit = {},
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
@@ -231,6 +237,12 @@ fun SettingsScreen(
                         onClick = onExportLogs,
                     )
 
+                    SectionHeader("Appearance")
+                    AppColorModeRow(
+                        selected = state.appColorMode,
+                        onSelected = onAppColorModeSelected,
+                    )
+
                     SectionHeader("About")
                     SettingsRow(
                         headline = "App version",
@@ -289,6 +301,36 @@ private fun SettingsRow(
                 },
             ),
     )
+}
+
+/**
+ * "App color" choice: "Rebubble" (the approved card palette — [AppColorMode.REBUBBLE], default)
+ * vs. "Material You (dynamic)" ([AppColorMode.DYNAMIC]). A [SingleChoiceSegmentedButtonRow]
+ * rather than [SettingsRow]'s single-tap-through pattern, matching the toggle already used for
+ * iMessage/SMS in [app.rebubble.ui.newchat.NewChatScreen].
+ */
+@Composable
+private fun AppColorModeRow(
+    selected: AppColorMode,
+    onSelected: (AppColorMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            AppColorMode.entries.forEachIndexed { index, mode ->
+                SegmentedButton(
+                    selected = selected == mode,
+                    onClick = { onSelected(mode) },
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = AppColorMode.entries.size,
+                    ),
+                ) {
+                    Text(if (mode == AppColorMode.REBUBBLE) "Rebubble" else "Material You")
+                }
+            }
+        }
+    }
 }
 
 @Composable

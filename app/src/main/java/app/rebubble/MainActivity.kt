@@ -9,8 +9,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.rebubble.data.repo.AppColorMode
+import app.rebubble.data.repo.ThemeSettingsRepository
 import app.rebubble.ui.navigation.RebubbleNavHost
 import app.rebubble.ui.navigation.chatGuidFromIntent
 import app.rebubble.ui.onboarding.OnboardingScreen
@@ -18,6 +22,7 @@ import app.rebubble.ui.onboarding.OnboardingUiState
 import app.rebubble.ui.theme.RebubbleTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -25,12 +30,17 @@ class MainActivity : ComponentActivity() {
     /** Pending notification chat guid; consumed by [RebubbleNavHost] after start destination resolves. */
     private val pendingDeepLinkChatGuid = MutableStateFlow<String?>(null)
 
+    @Inject
+    lateinit var themeSettingsRepository: ThemeSettingsRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingDeepLinkChatGuid.value = chatGuidFromIntent(intent)
         enableEdgeToEdge()
         setContent {
-            RebubbleTheme {
+            val appColorMode by themeSettingsRepository.appColorMode
+                .collectAsStateWithLifecycle(initialValue = AppColorMode.REBUBBLE)
+            RebubbleTheme(dynamicColor = appColorMode == AppColorMode.DYNAMIC) {
                 RebubbleApp(pendingDeepLinkChatGuid = pendingDeepLinkChatGuid)
             }
         }

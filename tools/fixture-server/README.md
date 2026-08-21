@@ -29,6 +29,7 @@ The Android emulator reaches the host machine at `10.0.2.2`. In onboarding, use:
 
 ## Endpoints
 
+- `GET /api/v1/contact` — returns one fixture contact, "Maya Chen" (`+15550100001`), the same address as the DM chat's `chatIdentifier`, so the DM's title resolves to her name via contact sync.
 - `POST /api/v1/chat/new` body `{ "addresses": string[], "message"?: string, "service"?: "iMessage"|"SMS", "method"?: string, "tempGuid"?: string }` — "Start chat" flow. Creates a new chat (guid `<service>;-;<address>` for a single address, `<service>;+;chatfixture<n>` for a group) or reuses one that already exists for that guid, and — when `message` is non-blank — sends it in the same call. `data` is the chat itself, with the sent message embedded on `data.messages[]` (not a separate field, matching the real server's `chatRouter.ts create()`), `tempGuid` echoed back onto it just like `POST /message/text`.
 
 ## Test hooks

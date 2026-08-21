@@ -403,7 +403,27 @@ app.post("/api/v1/fcm/device", requireGuid, (_req, res) => {
 });
 
 app.get("/api/v1/contact", requireGuid, (_req, res) => {
-  res.json(ok([], "Success"));
+  // Address deliberately matches DM_GUID's chatIdentifier ("+15550100001") so the fixture DM's
+  // title resolves to "Maya Chen" via contact sync instead of the raw phone number.
+  res.json(
+    ok(
+      [
+        {
+          id: 1,
+          firstName: null,
+          lastName: null,
+          displayName: "Maya Chen",
+          nickname: null,
+          birthday: null,
+          avatar: "",
+          sourceType: "db",
+          phoneNumbers: [{ address: "+15550100001", id: 1 }],
+          emails: [],
+        },
+      ],
+      "Success",
+    ),
+  );
 });
 
 // --- Scenario controls (no guid auth) ---

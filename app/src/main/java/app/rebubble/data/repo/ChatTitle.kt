@@ -23,7 +23,7 @@ internal fun resolveChatTitle(
 
     if (participants.isNotEmpty()) {
         return participants.joinToString(", ") { handle ->
-            contactsByAddress[handle.address]?.displayName?.takeIf { it.isNotBlank() }
+            contactsByAddress.findByAddress(handle.address)?.displayName?.takeIf { it.isNotBlank() }
                 ?: handle.address
         }
     }

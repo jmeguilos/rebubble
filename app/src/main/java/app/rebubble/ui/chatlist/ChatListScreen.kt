@@ -177,12 +177,15 @@ fun ChatListScreen(
             SyncStatusChipSlot(status = syncStatus)
 
             // Sheet paints to the physical bottom edge; list/empty content pads for nav bars.
+            // surfaceContainerLowest (rather than surface) keeps the sheet visibly distinct from
+            // the surfaceContainer screen background above even under a dynamic (Material You)
+            // palette, where surface and surfaceContainer can end up nearly identical.
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 shape = ListSheetTopShape,
-                color = MaterialTheme.colorScheme.surface,
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp,
             ) {

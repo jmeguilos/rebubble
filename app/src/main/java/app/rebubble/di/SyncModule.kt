@@ -8,6 +8,7 @@ import app.rebubble.data.local.dao.ChatDao
 import app.rebubble.data.local.dao.HandleDao
 import app.rebubble.data.local.dao.MessageDao
 import app.rebubble.data.remote.api.BlueBubblesApi
+import app.rebubble.data.repo.ContactRepository
 import app.rebubble.data.sync.MessageIngestor
 import app.rebubble.data.sync.NewMessageAlert
 import app.rebubble.data.sync.Reconciler
@@ -71,6 +72,8 @@ abstract class SyncModule {
             chatDao: ChatDao,
             handleDao: HandleDao,
             messageDao: MessageDao,
-        ): Reconciler = Reconciler(api, watermarkStore, ingestor, chatDao, handleDao, messageDao)
+            contactRepository: ContactRepository,
+        ): Reconciler =
+            Reconciler(api, watermarkStore, ingestor, chatDao, handleDao, messageDao, contactRepository)
     }
 }

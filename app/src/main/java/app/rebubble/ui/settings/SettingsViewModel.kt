@@ -8,7 +8,11 @@ import androidx.work.WorkManager
 import app.rebubble.data.logging.RingBufferLogger
 import app.rebubble.data.logging.shareLogsIntent
 import app.rebubble.data.logging.writeLogSnapshot
+import app.rebubble.data.repo.AppColorMode
+import app.rebubble.data.repo.ServerConfig
 import app.rebubble.data.repo.ServerConfigRepository
+import app.rebubble.data.repo.ServerInfo
+import app.rebubble.data.repo.ThemeSettingsRepository
 import app.rebubble.data.sync.SyncScheduling
 import app.rebubble.data.sync.SyncStatus
 import app.rebubble.data.sync.SyncStatusTracker
@@ -53,6 +57,7 @@ data class SettingsUiState(
     val notificationsBusy: Boolean = false,
     val snackbarMessage: String? = null,
     val appVersion: String = "",
+    val appColorMode: AppColorMode = AppColorMode.REBUBBLE,
 )
 
 sealed interface SettingsEvent {
@@ -63,6 +68,7 @@ sealed interface SettingsEvent {
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val serverConfigRepository: ServerConfigRepository,
+    private val themeSettingsRepository: ThemeSettingsRepository,
     private val syncStatusTracker: SyncStatusTracker,
     private val logger: RingBufferLogger,
     @param:ApplicationContext private val appContext: Context,
@@ -82,21 +88,30 @@ class SettingsViewModel @Inject constructor(
                 serverConfigRepository.config,
                 serverConfigRepository.serverInfo,
                 syncStatusTracker.status,
-            ) { config, info, sync ->
-                Triple(config, info, sync)
-            }.collect { (config, info, sync) ->
+                themeSettingsRepository.appColorMode,
+            ) { config, info, sync, colorMode ->
+                SettingsSnapshot(config, info, sync, colorMode)
+            }.collect { snapshot ->
                 _uiState.update { state ->
                     state.copy(
-                        serverUrl = config?.url,
-                        serverVersion = info?.serverVersion,
-                        osVersion = info?.osVersion,
-                        privateApi = info?.privateApi,
-                        syncStatus = sync,
+                        serverUrl = snapshot.config?.url,
+                        serverVersion = snapshot.info?.serverVersion,
+                        osVersion = snapshot.info?.osVersion,
+                        privateApi = snapshot.info?.privateApi,
+                        syncStatus = snapshot.sync,
+                        appColorMode = snapshot.colorMode,
                     )
                 }
             }
         }
     }
+
+    private data class SettingsSnapshot(
+        val config: ServerConfig?,
+        val info: ServerInfo?,
+        val sync: SyncStatus,
+        val colorMode: AppColorMode,
+    )
 
     /** Non-blocking refresh of cached server info when the settings screen opens. */
     fun onScreenOpen() {
@@ -155,6 +170,12 @@ class SettingsViewModel @Inject constructor(
             _uiState.update {
                 it.copy(notificationsBusy = false, snackbarMessage = message)
             }
+        }
+    }
+
+    fun setAppColorMode(mode: AppColorMode) {
+        viewModelScope.launch {
+            themeSettingsRepository.setAppColorMode(mode)
         }
     }
 

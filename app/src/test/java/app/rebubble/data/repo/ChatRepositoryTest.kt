@@ -255,6 +255,25 @@ class ChatRepositoryTest {
         }
     }
 
+    // --- 4b. normalized address lookup: contact keyed differently than the stored handle --------
+
+    @Test
+    fun `title resolves via normalized address when the contact and handle addresses differ in punctuation`() =
+        runBlocking {
+            val handleAddress = "+1 (555) 010-0001"
+            val normalizedAddress = "+15550100001"
+            db.chatDao().upsert(listOf(chat("chat-1", displayName = null, chatIdentifier = handleAddress)))
+            seedParticipants("chat-1", handleAddress)
+            db.contactDao().upsert(
+                listOf(ContactEntity(address = normalizedAddress, displayName = "Maya Chen", avatarPath = null))
+            )
+
+            collectEmissions(repo.observeChats()) { emissions ->
+                val item = emissions.next().single()
+                assertEquals("Maya Chen", item.title)
+            }
+        }
+
     // --- 5. N+1 fix: one join query, no per-chat participantsFor --------------------------------
 
     /**

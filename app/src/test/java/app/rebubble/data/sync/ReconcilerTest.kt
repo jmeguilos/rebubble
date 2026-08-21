@@ -8,6 +8,7 @@ import app.rebubble.data.local.RebubbleDatabase
 import app.rebubble.data.local.entity.ChatEntity
 import app.rebubble.data.remote.api.FakeServerCredentialsProvider
 import app.rebubble.data.remote.api.testBlueBubblesApi
+import app.rebubble.data.repo.ContactRepository
 import app.rebubble.notifications.ActiveChatTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -15,8 +16,10 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest
 import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -32,6 +35,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * [Reconciler] is the reliability guarantee that makes message delivery eventually consistent even
@@ -52,10 +56,28 @@ class ReconcilerTest {
     private lateinit var ingestor: MessageIngestor
     private lateinit var watermarkStore: SyncWatermarkStore
 
+    /**
+     * A dedicated second server for [ContactRepository] (rather than sharing [server]'s FIFO
+     * response queue), so every existing chat/message-pass test here keeps enqueueing exactly the
+     * chat/message responses it always has -- [Reconciler.reconcile] now also calls
+     * [ContactRepository.syncContacts] once per call, and that must not silently steal a queued
+     * response meant for the chat or message pass.
+     */
+    private lateinit var contactServer: MockWebServer
+    private val contactRequestCount = AtomicInteger(0)
+
     @Before
     fun setUp() {
         server = MockWebServer()
         server.start()
+        contactServer = MockWebServer()
+        contactServer.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                contactRequestCount.incrementAndGet()
+                return MockResponse().setResponseCode(200).setBody(envelope("[]"))
+            }
+        }
+        contactServer.start()
         db = InMemoryDatabaseFactory.create()
         ingestor = MessageIngestor(
             db = db,
@@ -76,10 +98,19 @@ class ReconcilerTest {
     @After
     fun tearDown() {
         runCatching { server.shutdown() }
+        runCatching { contactServer.shutdown() }
         db.close()
     }
 
     // --- harness ----------------------------------------------------------------------------
+
+    private fun contactRepository(): ContactRepository {
+        val credentials = FakeServerCredentialsProvider(
+            urlValue = contactServer.url("/").toString(),
+            passwordValue = "pw",
+        )
+        return ContactRepository(api = testBlueBubblesApi(credentials), contactDao = db.contactDao())
+    }
 
     private fun reconciler(pageLimit: Int = 1000): Reconciler {
         val credentials = FakeServerCredentialsProvider(
@@ -93,6 +124,7 @@ class ReconcilerTest {
             chatDao = db.chatDao(),
             handleDao = db.handleDao(),
             messageDao = db.messageDao(),
+            contactRepository = contactRepository(),
             pageLimit = pageLimit,
         )
     }
@@ -397,4 +429,19 @@ class ReconcilerTest {
         // A tapback is not a conversation preview — same exclusion the ingestor applies.
         assertNull(db.chatDao().getByGuid("chat-reaction")?.lastMessagePreview)
     }
+
+    // --- 9. contact sync rides the chat pass once per reconcile call ---------------------------
+
+    @Test
+    fun `reconcile calls ContactRepository syncContacts exactly once per call, after the chat pass`() =
+        runBlocking {
+            enqueueChats()
+            enqueueChats()
+
+            runReconcile(reconciler())
+            assertEquals(1, contactRequestCount.get())
+
+            runReconcile(reconciler())
+            assertEquals(2, contactRequestCount.get())
+        }
 }

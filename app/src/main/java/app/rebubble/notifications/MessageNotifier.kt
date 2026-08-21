@@ -17,6 +17,7 @@ import app.rebubble.data.local.dao.MessageDao
 import app.rebubble.data.local.entity.ContactEntity
 import app.rebubble.data.local.entity.MessageEntity
 import app.rebubble.data.repo.GROUP_CHAT_STYLE
+import app.rebubble.data.repo.findByAddress
 import app.rebubble.data.repo.resolveChatTitle
 import app.rebubble.data.sync.NewMessageAlert
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -209,7 +210,7 @@ class MessageNotifier @Inject constructor(
         } else {
             val name = row.senderAddress
                 ?.let { addr ->
-                    contactsByAddress[addr]?.displayName?.takeIf { it.isNotBlank() } ?: addr
+                    contactsByAddress.findByAddress(addr)?.displayName?.takeIf { it.isNotBlank() } ?: addr
                 }
                 ?: UNKNOWN_SENDER
             Person.Builder().setName(name).build()

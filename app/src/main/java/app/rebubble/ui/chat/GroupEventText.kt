@@ -1,6 +1,7 @@
 package app.rebubble.ui.chat
 
 import app.rebubble.data.local.entity.MessageEntity
+import app.rebubble.data.repo.findNameByAddress
 
 /**
  * Human-readable centered label for a group-event row (`itemType != 0`).
@@ -70,5 +71,5 @@ fun resolveGroupEventSenderName(
 ): String {
     if (isFromMe) return "You"
     val address = senderAddress?.takeIf { it.isNotBlank() } ?: return "Someone"
-    return contactsByAddress[address]?.takeIf { it.isNotBlank() } ?: "Someone"
+    return contactsByAddress.findNameByAddress(address)?.takeIf { it.isNotBlank() } ?: "Someone"
 }

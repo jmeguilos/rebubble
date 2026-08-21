@@ -59,6 +59,7 @@ import app.rebubble.data.local.entity.SendStatus
 import app.rebubble.ui.chatlist.rememberAppImageLoader
 import app.rebubble.ui.common.ChatAvatar
 import app.rebubble.ui.common.ChatAvatarSizeCompact
+import app.rebubble.ui.theme.ListSheetTopShape
 import app.rebubble.ui.theme.RebubbleTheme
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
@@ -166,7 +167,9 @@ fun ChatScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surface,
+        // Screen background behind the appbar band (design/screens/chat.html `.phone`); the
+        // message thread itself is the rounded "sheet" below, painted separately.
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
@@ -197,52 +200,62 @@ fun ChatScreen(
             }
         },
     ) { innerPadding ->
-        Box(
+        // The message thread is the rounded "sheet" (design/screens/chat.html `.sheet`) against
+        // the appbar-band screen background above; surfaceContainerLowest (rather than surface)
+        // keeps it visibly distinct from the Scaffold's surfaceContainer even under a dynamic
+        // (Material You) palette, where surface and surfaceContainer can end up nearly identical.
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding),
+            shape = ListSheetTopShape,
+            color = MaterialTheme.colorScheme.surfaceContainerLowest,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
         ) {
-            if (uiState.loading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else {
-                LazyColumn(
-                    state = listState,
-                    reverseLayout = true,
-                    contentPadding = PaddingValues(vertical = 12.dp),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = { selectedGuid = null })
-                        },
-                ) {
-                    items(
-                        items = uiState.items,
-                        key = { it.key },
-                        contentType = { it.contentType },
-                    ) { item ->
-                        when (item) {
-                            is ChatUiItem.DaySeparator -> DaySeparatorRow(label = item.label)
-                            is ChatUiItem.GroupEvent -> GroupEventRow(label = item.label)
-                            is ChatUiItem.Bubble -> MessageBubble(
-                                item = item,
-                                isSms = uiState.isSms,
-                                selected = selectedGuid == item.message.guid,
-                                showDeliveryReceipt = item.message.guid == latestOwnGuid,
-                                // Tap reveals timestamp; long-press reserved for a future menu.
-                                onLongPress = { /* reserved for actions menu */ },
-                                onTap = {
-                                    selectedGuid =
-                                        if (selectedGuid == item.message.guid) {
-                                            null
-                                        } else {
-                                            item.message.guid
-                                        }
-                                },
-                                onRetry = { onRetry(item.message.guid) },
-                                onDownloadAttachment = onDownloadAttachment,
-                                imageLoader = imageLoader,
-                            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (uiState.loading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        reverseLayout = true,
+                        contentPadding = PaddingValues(vertical = 12.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectTapGestures(onTap = { selectedGuid = null })
+                            },
+                    ) {
+                        items(
+                            items = uiState.items,
+                            key = { it.key },
+                            contentType = { it.contentType },
+                        ) { item ->
+                            when (item) {
+                                is ChatUiItem.DaySeparator -> DaySeparatorRow(label = item.label)
+                                is ChatUiItem.GroupEvent -> GroupEventRow(label = item.label)
+                                is ChatUiItem.Bubble -> MessageBubble(
+                                    item = item,
+                                    isSms = uiState.isSms,
+                                    selected = selectedGuid == item.message.guid,
+                                    showDeliveryReceipt = item.message.guid == latestOwnGuid,
+                                    // Tap reveals timestamp; long-press reserved for a future menu.
+                                    onLongPress = { /* reserved for actions menu */ },
+                                    onTap = {
+                                        selectedGuid =
+                                            if (selectedGuid == item.message.guid) {
+                                                null
+                                            } else {
+                                                item.message.guid
+                                            }
+                                    },
+                                    onRetry = { onRetry(item.message.guid) },
+                                    onDownloadAttachment = onDownloadAttachment,
+                                    imageLoader = imageLoader,
+                                )
+                            }
                         }
                     }
                 }

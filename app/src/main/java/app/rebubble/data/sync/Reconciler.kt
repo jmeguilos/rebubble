@@ -13,6 +13,7 @@ import app.rebubble.data.remote.dto.ChatDto
 import app.rebubble.data.remote.dto.requests.ChatQueryRequest
 import app.rebubble.data.remote.dto.requests.MessageQueryRequest
 import app.rebubble.data.remote.dto.requests.WhereClause
+import app.rebubble.data.repo.ContactRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -55,7 +56,12 @@ data class SyncOutcome(val newMessageGuids: List<String>, val error: Throwable?)
  *     each row's `lastMessage` via [seedPreviewFromLastMessage] — only-if-newer, message row not
  *     ingested — which is what gives a fresh install non-blank previews. Participants are upserted
  *     alongside via [HandleDao.upsert] + [HandleDao.upsertChatHandleCrossRefs].
- *  2. **Message pass** — reads the persisted watermark ([SyncWatermarkStore.get]). A `null`
+ *  2. **Contact sync** — [ContactRepository.syncContacts] once, right after the chat pass and
+ *     before the message pass. Contacts change rarely, so once per reconcile is plenty; this is
+ *     deliberately not a separate WorkManager worker. [ContactRepository.syncContacts] never
+ *     throws on its own (see its KDoc), so a contacts failure never affects [SyncOutcome.error] —
+ *     that stays driven by the chat/message passes only.
+ *  3. **Message pass** — reads the persisted watermark ([SyncWatermarkStore.get]). A `null`
  *     watermark means sync hasn't been initialized yet (expected to happen once at onboarding, via
  *     [SyncWatermarkStore.initializeIfAbsent]) — outside that window there is nothing to reconcile
  *     from, so this pass is skipped entirely (the chat pass above still runs). Otherwise, this
@@ -86,6 +92,7 @@ class Reconciler(
     private val chatDao: ChatDao,
     private val handleDao: HandleDao,
     private val messageDao: MessageDao,
+    private val contactRepository: ContactRepository,
     private val pageLimit: Int = DEFAULT_RECONCILE_PAGE_LIMIT,
 ) {
     private val mutex = Mutex()
@@ -94,6 +101,7 @@ class Reconciler(
         val newMessageGuids = mutableListOf<String>()
         try {
             runChatPass()
+            contactRepository.syncContacts()
             runMessagePass(newMessageGuids)
             SyncOutcome(newMessageGuids, null)
         } catch (cancellation: CancellationException) {

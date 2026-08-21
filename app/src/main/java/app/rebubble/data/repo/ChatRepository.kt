@@ -72,7 +72,7 @@ class ChatRepository @Inject constructor(
                     style = chat.style,
                     avatarPath = if (!isGroup) {
                         participants.firstOrNull()
-                            ?.let { contactsByAddress[it.address]?.avatarPath }
+                            ?.let { contactsByAddress.findByAddress(it.address)?.avatarPath }
                     } else {
                         null
                     },
