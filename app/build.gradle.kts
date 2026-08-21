@@ -147,6 +147,13 @@ dependencies {
 
     debugImplementation(libs.androidx.ui.tooling)
 
+    // The Compose BOM must be on the test classpath too, or the versionless ui-test artifacts below
+    // resolve without a version and fail. (`implementation(platform(...))` above does not apply to
+    // the unit-test configuration.)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.test.manifest)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.kotlinx.coroutines.test)

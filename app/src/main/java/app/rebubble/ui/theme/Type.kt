@@ -1,19 +1,44 @@
 package app.rebubble.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import app.rebubble.R
 
-/** Figtree variable font for display / titles (OFL — see assets/fonts/FIGTREE_OFL.txt).
- * Chosen as the closest open face to Google Sans Text (user pick, 2026-08-20). */
+/**
+ * Figtree variable font for display / titles (OFL — see assets/fonts/FIGTREE_OFL.txt).
+ * Chosen as the closest open face to Google Sans Text (user pick, 2026-08-20).
+ *
+ * **Every face must pass `variationSettings` explicitly.** `figtree.ttf` is a variable font whose
+ * `fvar` wght axis is `min=300 default=300 max=900`, with `OS/2.usWeightClass = 300` — its default
+ * instance is Light. Compose's 3- and 4-argument `Font(resId, weight, style[, loadingStrategy])`
+ * overloads construct a `ResourceFont` with an *empty* `FontVariation.Settings`, so the typeface is
+ * instantiated at that 300 default and the `weight` argument only affects font *matching*, never
+ * rasterization. Declaring `FontWeight.Bold` through those overloads therefore rendered Light 300 —
+ * and because the declared weight matched the request exactly, Compose never synthesized bold to
+ * compensate. Only the overload that carries `variationSettings` pins the axis.
+ *
+ * `FontVariation.weight` requires API 26; `minSdk` is 26, so it always applies.
+ */
+@OptIn(ExperimentalTextApi::class)
+private fun figtree(weight: Int) = Font(
+    resId = R.font.figtree,
+    weight = FontWeight(weight),
+    style = FontStyle.Normal,
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
+)
+
 val FigtreeFamily = FontFamily(
-    Font(R.font.figtree, weight = FontWeight.Medium),
-    Font(R.font.figtree, weight = FontWeight.SemiBold),
-    Font(R.font.figtree, weight = FontWeight.Bold),
+    figtree(400),
+    figtree(500),
+    figtree(600),
+    figtree(700),
 )
 
 val Typography = Typography(
