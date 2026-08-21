@@ -6,11 +6,16 @@ import app.rebubble.data.local.entity.MessageEntity
 const val RUN_GROUP_WINDOW_MS: Long = 60_000L
 
 /**
- * Per-bubble flags for consecutive-run geometry: tight inner radii + a directional tail only on
- * the chronologically last bubble of a same-sender run (within [RUN_GROUP_WINDOW_MS]).
+ * Per-bubble flags for consecutive-run geometry: which end(s) of a same-sender run (within
+ * [RUN_GROUP_WINDOW_MS]) a bubble sits at. The run's first and last bubbles keep the full outer
+ * radius on the near side; interior bubbles get the tight radius, which is what visually welds a
+ * run together.
+ *
+ * There used to be a third `showTail` field here. It was computed as `j == runLast` — identical to
+ * [isLastInRun] by construction — and fed a decorative tail that has since been removed. See
+ * [app.rebubble.ui.chat.bubbleShapeFor].
  */
 data class BubbleRunFlags(
-    val showTail: Boolean,
     val isFirstInRun: Boolean,
     val isLastInRun: Boolean,
 )
@@ -37,7 +42,6 @@ fun computeBubbleRunFlags(messages: List<MessageEntity>): Map<String, BubbleRunF
             val runLast = i - 1
             for (j in runStart..runLast) {
                 result[chronological[j].guid] = BubbleRunFlags(
-                    showTail = j == runLast,
                     isFirstInRun = j == runStart,
                     isLastInRun = j == runLast,
                 )

@@ -30,6 +30,13 @@ val SurfaceContainerHighLight = Color(0xFFECE6F0)
 val SurfaceContainerHighestLight = Color(0xFFE6E0E9)
 val OnSurfaceLight = Color(0xFF1D1B20)
 val OnSurfaceVariantLight = Color(0xFF49454F)
+
+/**
+ * Interactive border colour (chip/field outlines) — must clear WCAG 1.4.11's 3:1 against every
+ * surface it sits on: 4.33:1 vs [SurfaceLight], 3.96:1 vs [SurfaceContainerLight].
+ * Distinct from [OutlineVariantLight], which is decorative-divider-only at 1.62:1.
+ */
+val OutlineLight = Color(0xFF79747E)
 val OutlineVariantLight = Color(0xFFCAC4D0)
 
 // M3 baseline neutrals — dark
@@ -40,6 +47,9 @@ val SurfaceContainerHighDark = Color(0xFF2B292F)
 val SurfaceContainerHighestDark = Color(0xFF36343B)
 val OnSurfaceDark = Color(0xFFE6E0E9)
 val OnSurfaceVariantDark = Color(0xFFCAC4D0)
+
+/** Dark-scheme interactive border: 5.87:1 vs [SurfaceDark], 5.14:1 vs [SurfaceContainerDark]. */
+val OutlineDark = Color(0xFF938F99)
 val OutlineVariantDark = Color(0xFF49454F)
 
 // Error
@@ -50,13 +60,30 @@ val ErrorDark = Color(0xFFF2B8B5)
 val ErrorContainerDark = Color(0xFF8C1D18)
 val OnErrorContainerDark = Color(0xFFF9DEDC)
 
-/** iMessage own-bubble blue (semantic — never themed). */
-val OwnIMessageBubble = Color(0xFF0A7CFF)
+/*
+ * Own-bubble fills are semantic (never themed) but still contrast-constrained: a fill may not be
+ * chosen for brand fidelity alone — its paired on-colour must clear WCAG AA (4.5:1) for the 16sp
+ * bodyLarge text drawn on it. Because the fills are fixed, each service carries its own on-colour
+ * rather than sharing one. Ratios are measured, not estimated; `ContrastRatioTest` enforces them.
+ */
 
-/** SMS own-bubble green (semantic — never themed). */
+/** iMessage own-bubble blue. Darkened from #0A7CFF (3.93:1 on white) to reach 5.07:1. */
+val OwnIMessageBubble = Color(0xFF0A6ADF)
+
+/** iMessage own-bubble text: 5.07:1 on [OwnIMessageBubble]. */
+val OnIMessageBubble = Color(0xFFFFFFFF)
+
+/** SMS own-bubble green — the recognisable hue is kept as-is. */
 val OwnSmsBubble = Color(0xFF34C759)
 
-val OnBubble = Color(0xFFFFFFFF)
+/**
+ * SMS own-bubble text. The green is too light for white (2.22:1), and darkening the fill would
+ * forfeit the hue, so the *text* darkens instead: 6.70:1 on [OwnSmsBubble].
+ */
+val OnSmsBubble = Color(0xFF0A2E12)
+
+/** Legacy alias of [OnIMessageBubble] (card `--on-bubble`). Prefer the per-service token. */
+val OnBubble = OnIMessageBubble
 
 /**
  * Per-contact avatar hue pair (M3 tone-90 bg / tone-10 fg in light;

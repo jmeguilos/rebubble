@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,7 +43,8 @@ import app.rebubble.data.local.entity.AttachmentEntity
 import app.rebubble.data.local.entity.MessageEntity
 import app.rebubble.data.local.entity.SendStatus
 import app.rebubble.ui.theme.RebubbleMotion
-import app.rebubble.ui.theme.OnBubble
+import app.rebubble.ui.theme.OnIMessageBubble
+import app.rebubble.ui.theme.OnSmsBubble
 import app.rebubble.ui.theme.OwnIMessageBubble
 import app.rebubble.ui.theme.OwnSmsBubble
 import app.rebubble.ui.theme.RebubbleTheme
@@ -61,8 +63,6 @@ internal const val SendingBubbleAlpha = 0.65f
 private val BubbleOuterRadius = 20.dp
 /** Card `--radius-tight`. */
 private val BubbleInnerRadius = 5.dp
-private val TailWidth = 8.dp
-private val TailHeight = 6.dp
 private val TimeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
 
 @Composable
@@ -84,13 +84,11 @@ fun MessageBubble(
     val maxWidth = (LocalConfiguration.current.screenWidthDp * 0.76f).dp
     val density = LocalDensity.current
     val motion = RebubbleMotion
-    val shape = remember(fromMe, item.showTail, item.isFirstInRun, item.isLastInRun, density) {
-        BubbleShape(
+    val shape = remember(fromMe, item.isFirstInRun, item.isLastInRun) {
+        bubbleShapeFor(
             fromMe = fromMe,
-            showTail = item.showTail,
             isFirstInRun = item.isFirstInRun,
             isLastInRun = item.isLastInRun,
-            density = density,
         )
     }
     val containerColor = when {
@@ -99,9 +97,12 @@ fun MessageBubble(
         fromMe -> OwnIMessageBubble
         else -> MaterialTheme.colorScheme.surfaceContainerHigh
     }
+    // Mirrors the containerColor branches above: each own-bubble fill has its own on-color, because
+    // white clears AA on the iMessage blue but only manages 2.22:1 on the SMS green.
     val contentColor = when {
         item.isFailed -> MaterialTheme.colorScheme.onErrorContainer
-        fromMe -> OnBubble
+        fromMe && isSms -> OnSmsBubble
+        fromMe -> OnIMessageBubble
         else -> MaterialTheme.colorScheme.onSurface
     }
 
@@ -157,9 +158,6 @@ fun MessageBubble(
                 .padding(
                     horizontal = if (item.attachments.isEmpty()) 12.dp else 4.dp,
                     vertical = if (item.attachments.isEmpty()) 8.dp else 4.dp,
-                )
-                .then(
-                    if (item.showTail) Modifier.padding(bottom = TailHeight) else Modifier,
                 ),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -239,103 +237,52 @@ internal fun deliveryReceiptLabel(
 }
 
 /**
- * Signature bubble geometry: 20dp outer / 4dp inner run radii, plus a small directional tail on
- * the last bubble of a consecutive same-sender run (own = bottom-right, other = bottom-left).
+ * Bubble geometry, straight from `design/components/bubbles.html`.
+ *
+ * The **far** side of a bubble (right for incoming, left for outgoing) is always the full
+ * [BubbleOuterRadius]. The **near** side carries the run seam: [BubbleOuterRadius] at the run's
+ * first and last bubbles, [BubbleInnerRadius] on interior ones. That asymmetry alone communicates
+ * both who is speaking and whether the run continues — it is Google Messages' own vocabulary.
+ *
+ * This replaced a hand-rolled [androidx.compose.ui.graphics.Shape] that also drew a decorative
+ * tail. The tail was deleted rather than repaired: the approved card specified a 12x12 concave
+ * fillet offset 6px outside a 20px corner, which is geometrically impossible (the body edge at the
+ * fillet's near x-position is ~14px away), so it rendered as a detached nub in the card and as a
+ * hairline sickle in the port. Neither M3 nor Google Messages ships a bubble tail.
+ *
+ * Using start/end corners rather than left/right also makes the geometry correct under RTL, which
+ * the previous implementation was not: it received a `layoutDirection` and ignored it, and its tail
+ * path hard-coded `size.width`. It additionally captured a [androidx.compose.ui.unit.Density] at
+ * construction and ignored the one handed to `createOutline`.
  */
-internal class BubbleShape(
-    private val fromMe: Boolean,
-    private val showTail: Boolean,
-    private val isFirstInRun: Boolean,
-    private val isLastInRun: Boolean,
-    private val density: Density,
-) : Shape {
-    override fun createOutline(
-        size: Size,
-        layoutDirection: LayoutDirection,
-        density: Density,
-    ): Outline {
-        val d = this.density
-        val outer = with(d) { BubbleOuterRadius.toPx() }
-        val inner = with(d) { BubbleInnerRadius.toPx() }
-        val tailW = with(d) { TailWidth.toPx() }
-        val tailH = with(d) { TailHeight.toPx() }
-
-        val topStart = if (isFirstInRun) outer else inner
-        val topEnd = if (isFirstInRun) outer else inner
-        val bottomStart = when {
-            !fromMe && showTail -> outer
-            isLastInRun -> outer
-            else -> inner
-        }
-        val bottomEnd = when {
-            fromMe && showTail -> outer
-            isLastInRun -> outer
-            else -> inner
-        }
-
-        val path = Path().apply {
-            val bodyBottom = if (showTail) size.height - tailH else size.height
-            addRoundRect(
-                RoundRect(
-                    left = 0f,
-                    top = 0f,
-                    right = size.width,
-                    bottom = bodyBottom,
-                    topLeftCornerRadius = CornerRadius(topStart, topStart),
-                    topRightCornerRadius = CornerRadius(topEnd, topEnd),
-                    bottomLeftCornerRadius = CornerRadius(bottomStart, bottomStart),
-                    bottomRightCornerRadius = CornerRadius(bottomEnd, bottomEnd),
-                ),
-            )
-            if (showTail) {
-                if (fromMe) {
-                    moveTo(size.width - outer * 0.4f, bodyBottom)
-                    quadraticTo(
-                        size.width + tailW * 0.15f,
-                        bodyBottom + tailH * 0.35f,
-                        size.width - tailW * 0.2f,
-                        size.height,
-                    )
-                    quadraticTo(
-                        size.width - outer * 0.55f,
-                        bodyBottom + tailH * 0.55f,
-                        size.width - outer * 1.1f,
-                        bodyBottom,
-                    )
-                    close()
-                } else {
-                    moveTo(outer * 0.4f, bodyBottom)
-                    quadraticTo(
-                        -tailW * 0.15f,
-                        bodyBottom + tailH * 0.35f,
-                        tailW * 0.2f,
-                        size.height,
-                    )
-                    quadraticTo(
-                        outer * 0.55f,
-                        bodyBottom + tailH * 0.55f,
-                        outer * 1.1f,
-                        bodyBottom,
-                    )
-                    close()
-                }
-            }
-        }
-        return Outline.Generic(path)
+internal fun bubbleShapeFor(
+    fromMe: Boolean,
+    isFirstInRun: Boolean,
+    isLastInRun: Boolean,
+): RoundedCornerShape {
+    val far = BubbleOuterRadius
+    val nearTop = if (isFirstInRun) BubbleOuterRadius else BubbleInnerRadius
+    val nearBottom = if (isLastInRun) BubbleOuterRadius else BubbleInnerRadius
+    return if (fromMe) {
+        // Outgoing: near side is the end edge.
+        RoundedCornerShape(topStart = far, topEnd = nearTop, bottomEnd = nearBottom, bottomStart = far)
+    } else {
+        // Incoming: near side is the start edge.
+        RoundedCornerShape(topStart = nearTop, topEnd = far, bottomEnd = far, bottomStart = nearBottom)
     }
 }
 
 internal fun formatBubbleTime(dateCreatedMs: Long, zone: ZoneId = ZoneId.systemDefault()): String =
     TimeFormatter.format(Instant.ofEpochMilli(dateCreatedMs).atZone(zone))
 
-@Preview(showBackground = true, name = "Own run with tails")
+@Preview(showBackground = true, name = "Own run")
 @Composable
 private fun OwnRunPreview() {
     val ctx = LocalPlatformContext.current
     RebubbleTheme(dynamicColor = false) {
         Column {
             MessageBubble(
-                item = previewBubble("1", "Hey", first = true, last = false, tail = false),
+                item = previewBubble("1", "Hey", first = true, last = false),
                 isSms = false,
                 selected = false,
                 onLongPress = {},
@@ -345,7 +292,7 @@ private fun OwnRunPreview() {
                 animateSendPop = false,
             )
             MessageBubble(
-                item = previewBubble("2", "Want to go?", first = false, last = true, tail = true),
+                item = previewBubble("2", "Want to go?", first = false, last = true),
                 isSms = false,
                 selected = true,
                 onLongPress = {},
@@ -365,7 +312,7 @@ private fun VariantsPreview() {
     RebubbleTheme(dynamicColor = false) {
         Column {
             MessageBubble(
-                item = previewBubble("o", "Incoming", fromMe = false, first = true, last = true, tail = true),
+                item = previewBubble("o", "Incoming", fromMe = false, first = true, last = true),
                 isSms = false,
                 selected = false,
                 onLongPress = {},
@@ -375,7 +322,7 @@ private fun VariantsPreview() {
                 animateSendPop = false,
             )
             MessageBubble(
-                item = previewBubble("s", "SMS out", first = true, last = true, tail = true),
+                item = previewBubble("s", "SMS out", first = true, last = true),
                 isSms = true,
                 selected = false,
                 onLongPress = {},
@@ -390,7 +337,6 @@ private fun VariantsPreview() {
                     "Failed",
                     first = true,
                     last = true,
-                    tail = true,
                     status = SendStatus.FAILED,
                 ),
                 isSms = false,
@@ -416,7 +362,6 @@ private fun SendingOwnPreview() {
                 "Still sending…",
                 first = true,
                 last = true,
-                tail = true,
                 status = SendStatus.SENDING,
             ),
             isSms = false,
@@ -443,7 +388,6 @@ private fun DeliveryReceiptPreview() {
                     "Delivered only",
                     first = true,
                     last = true,
-                    tail = true,
                     dateDelivered = now,
                 ),
                 isSms = false,
@@ -461,7 +405,6 @@ private fun DeliveryReceiptPreview() {
                     "Read wins",
                     first = true,
                     last = true,
-                    tail = true,
                     dateDelivered = now - 1_000,
                     dateRead = now,
                 ),
@@ -484,7 +427,6 @@ private fun previewBubble(
     fromMe: Boolean = true,
     first: Boolean,
     last: Boolean,
-    tail: Boolean,
     status: SendStatus = SendStatus.SENT,
     attachments: List<AttachmentEntity> = emptyList(),
     dateDelivered: Long? = null,
@@ -511,7 +453,6 @@ private fun previewBubble(
         sendStatus = status,
     ),
     attachments = attachments,
-    showTail = tail,
     isFirstInRun = first,
     isLastInRun = last,
 )

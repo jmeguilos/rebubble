@@ -29,13 +29,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -71,7 +71,6 @@ import app.rebubble.ui.common.SearchConversationsPill
 import app.rebubble.ui.common.SyncStatusChip
 import app.rebubble.ui.theme.ListSheetTopShape
 import app.rebubble.ui.theme.RebubbleTheme
-import app.rebubble.ui.theme.StartChatFabShape
 import coil3.ImageLoader
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
@@ -81,6 +80,15 @@ private val RowMinHeight = 76.dp
 private val HeaderIconSize = 32.dp
 private val UnreadBadgeSize = 20.dp
 private val FilterChipShape = RoundedCornerShape(8.dp)
+
+/** 56dp FAB + its 4dp bottom padding + 16dp breathing room, so it never occludes the last row. */
+private val FabClearance = 76.dp
+
+/**
+ * Scroll offset (px) past which the extended FAB collapses to icon-only. Roughly one row, so a
+ * fling's initial jitter can't flip the state, and returning to the top always restores the label.
+ */
+private const val FabCollapseScrollThresholdPx = 120
 private const val MaxUnreadBadgeCount = 99
 
 @Composable
@@ -133,18 +141,33 @@ fun ChatListScreen(
     }
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
+    // Extended FAB collapse-on-scroll. A threshold (rather than any non-zero delta) keeps the FAB
+    // from thrashing between states on small fling jitter, and re-expanding at the very top is what
+    // makes the expanded label the resting state a user always returns to.
+    val fabExpanded by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 &&
+                listState.firstVisibleItemScrollOffset < FabCollapseScrollThresholdPx
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        // Always visible (no hide-on-scroll): the list is a single non-collapsing LazyColumn with
-        // no nested-scroll-connected top bar to drive FloatingActionButtonDefaults.scrollBehavior,
-        // and the card's FAB is anchored to the phone frame in every shown state, not tied to
-        // scroll position -- simplest thing that matches the design without inventing scroll
-        // plumbing this screen doesn't otherwise need.
+        // The Scaffold's insets are zeroed (single-owner model), so the host must clear the
+        // gesture-nav pill itself rather than render behind it.
+        snackbarHost = {
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
+            )
+        },
+        // Collapses to an icon-only FAB while scrolling down and re-expands on scroll up, per M3
+        // and Google Messages. Driven off the list's own scroll offset rather than a
+        // nested-scroll-connected top bar, since this screen has no collapsing app bar.
         floatingActionButton = {
-            StartChatFab(onClick = onStartChatClick)
+            StartChatFab(onClick = onStartChatClick, expanded = fabExpanded)
         },
     ) { _ ->
         // Tonal Scaffold bg extends under the status bar; only the header consumes status insets.
@@ -218,7 +241,10 @@ fun ChatListScreen(
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp + navBarBottom),
+                            // Must clear the FAB, not just the nav bar: 56dp FAB + its 4dp bottom
+                            // padding + 16dp breathing room. Previously 16dp, so the FAB sat on
+                            // top of the last row in a full list.
+                            contentPadding = PaddingValues(bottom = FabClearance + navBarBottom),
                         ) {
                             items(
                                 items = uiState.items,
@@ -253,7 +279,7 @@ private fun ChatListHeader(
     ) {
         Text(
             text = "Rebubble",
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
         SettingsAvatarButton(onClick = onSettingsClick)
@@ -292,20 +318,25 @@ private fun SettingsAvatarButton(
 @Composable
 private fun StartChatFab(
     onClick: () -> Unit,
+    expanded: Boolean,
     modifier: Modifier = Modifier,
 ) {
     ExtendedFloatingActionButton(
         onClick = onClick,
+        expanded = expanded,
         modifier = modifier
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(end = 4.dp, bottom = 4.dp)
             // Explicit semantics: the merged text was observed missing from the a11y tree on
-            // device (unlabeled for TalkBack and undiscoverable by UI tests).
+            // device (unlabeled for TalkBack and undiscoverable by UI tests). Still required in
+            // the collapsed state, where there is no label to merge at all.
             .semantics { contentDescription = "Start chat" },
-        shape = StartChatFabShape,
+        // M3 extended FAB uses shapes.large (16dp); the card's 18px was amended to match.
+        shape = MaterialTheme.shapes.large,
         containerColor = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 3.dp),
+        // M3 FAB resting elevation is level 3 (6dp), which is FloatingActionButtonDefaults' own
+        // default. The previous explicit 3dp produced no visible shadow against a near-white sheet.
         icon = {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.Chat,
@@ -340,6 +371,19 @@ private fun ChatFilterChips(
                 selected = isSelected,
                 onClick = { onFilterSelected(filter) },
                 label = { Text(text = filter.label) },
+                // M3 filter chips show a leading checkmark when selected. Conveying selection by
+                // fill alone is also a colour-only state indicator (WCAG 1.4.1).
+                leadingIcon = if (isSelected) {
+                    {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(FilterChipDefaults.IconSize),
+                        )
+                    }
+                } else {
+                    null
+                },
                 shape = FilterChipShape,
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = Color.Transparent,
@@ -353,7 +397,10 @@ private fun ChatFilterChips(
                     FilterChipDefaults.filterChipBorder(
                         enabled = true,
                         selected = false,
-                        borderColor = MaterialTheme.colorScheme.outlineVariant,
+                        // `outline`, not `outlineVariant`: this is an interactive border and must
+                        // clear WCAG 1.4.11's 3:1, which outlineVariant (a decorative divider
+                        // colour) does not.
+                        borderColor = MaterialTheme.colorScheme.outline,
                     )
                 },
             )

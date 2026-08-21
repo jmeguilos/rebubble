@@ -229,11 +229,10 @@ internal fun buildChatItems(
                     )
                 } else {
                     val flags = runFlags[entity.guid]
-                        ?: BubbleRunFlags(showTail = true, isFirstInRun = true, isLastInRun = true)
+                        ?: BubbleRunFlags(isFirstInRun = true, isLastInRun = true)
                     ChatUiItem.Bubble(
                         message = entity,
                         attachments = attachmentsByMessage[entity.guid].orEmpty(),
-                        showTail = flags.showTail,
                         isFirstInRun = flags.isFirstInRun,
                         isLastInRun = flags.isLastInRun,
                     )

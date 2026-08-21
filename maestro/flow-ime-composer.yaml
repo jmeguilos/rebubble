@@ -1,0 +1,51 @@
+appId: app.rebubble.android
+---
+# Regression flow for the IME-insets fix (A6).
+#
+# The bug: MainActivity calls enableEdgeToEdge() and ChatScreen zeroed its Scaffold insets while
+# padding the composer with navigationBars only, so the soft keyboard drew straight over the
+# composer and the newest messages.
+#
+# NOTE ON VERIFICATION: `assertVisible` reads the accessibility tree, which reports a node as
+# visible when it is laid out — even if the keyboard is painted on top of it. It therefore CANNOT
+# catch this bug and must not be treated as the check. The screenshots below are the artifact; the
+# check is a human (or reviewer) looking at them, cross-referenced with
+#   adb shell dumpsys input_method | grep mInputShown
+# to confirm the keyboard really was up when the shot was taken.
+#
+# Assumes a prior successful flow-onboard.yaml (app already connected; do not clearState).
+# Fixture server must be running.
+- launchApp
+- extendedWaitUntil:
+    visible: "Maya Chen"
+    timeout: 30000
+- tapOn: "Maya Chen"
+- extendedWaitUntil:
+    visible: "Message"
+    timeout: 15000
+
+# Baseline: keyboard down.
+- takeScreenshot: ime-01-keyboard-down
+
+# Raise the keyboard by focusing the field.
+- tapOn: "Message"
+# The IME animates in; give it time to settle before capturing.
+- extendedWaitUntil:
+    visible: "Message"
+    timeout: 5000
+- takeScreenshot: ime-02-keyboard-up
+# Expected in ime-02: the composer sits directly ON TOP of the keyboard, fully visible, and the
+# newest bubble is visible immediately above the composer.
+
+# A multi-line draft grows the field upward; the composer must still clear the keyboard and the
+# thread must shrink rather than be occluded.
+- inputText: "One line of draft text that is long enough to wrap onto a second and then a third line in the composer field"
+- takeScreenshot: ime-03-multiline-draft
+
+# Sending must return the composer to its keyboard-up resting position, not jump.
+- tapOn:
+    accessibilityText: "Send"
+- extendedWaitUntil:
+    visible: "One line of draft text"
+    timeout: 30000
+- takeScreenshot: ime-04-after-send

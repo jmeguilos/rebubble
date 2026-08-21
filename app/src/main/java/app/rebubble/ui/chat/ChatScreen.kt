@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -171,7 +173,16 @@ fun ChatScreen(
         // message thread itself is the rounded "sheet" below, painted separately.
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = {
+            // The Scaffold's insets are zeroed (single-owner model), so the host must clear the
+            // gesture-nav pill itself — and rise with the keyboard rather than hide behind it.
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.windowInsetsPadding(
+                    WindowInsets.navigationBars.union(WindowInsets.ime),
+                ),
+            )
+        },
         topBar = {
             ChatAppBar(
                 title = uiState.title,
@@ -195,7 +206,17 @@ fun ChatScreen(
                     isSms = uiState.isSms,
                     onSendText = onSendText,
                     onSendAttachment = onSendAttachment,
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
+                    // `union` takes the per-side maximum, so this is correct both keyboard-up (ime
+                    // dominates) and keyboard-down (navigationBars dominates). Chaining
+                    // `imePadding().navigationBarsPadding()` would instead sum them and double-pad.
+                    //
+                    // This is the whole IME fix: the thread sits in the Scaffold content padded by
+                    // innerPadding, which tracks the bottomBar's height, and the list is
+                    // reverseLayout — so as the composer rises the thread shrinks and the newest
+                    // bubble stays pinned directly above it. No scroll plumbing required.
+                    modifier = Modifier.windowInsetsPadding(
+                        WindowInsets.navigationBars.union(WindowInsets.ime),
+                    ),
                 )
             }
         },
@@ -443,21 +464,18 @@ private fun previewThread(isSms: Boolean = false): ChatUiState {
                     dateRead = now - 500,
                 ),
                 attachments = emptyList(),
-                showTail = true,
                 isFirstInRun = false,
                 isLastInRun = true,
             ),
             ChatUiItem.Bubble(
                 message = previewMsg("2", "On my way!", now - 30_000, true),
                 attachments = emptyList(),
-                showTail = false,
                 isFirstInRun = true,
                 isLastInRun = false,
             ),
             ChatUiItem.Bubble(
                 message = previewMsg("3", "Are you close?", now - 60_000, false),
                 attachments = emptyList(),
-                showTail = true,
                 isFirstInRun = true,
                 isLastInRun = true,
             ),
@@ -470,7 +488,6 @@ private fun previewThread(isSms: Boolean = false): ChatUiState {
                     status = SendStatus.FAILED,
                 ),
                 attachments = emptyList(),
-                showTail = true,
                 isFirstInRun = true,
                 isLastInRun = true,
             ),

@@ -44,7 +44,6 @@ sealed interface ChatUiItem {
     data class Bubble(
         val message: MessageEntity,
         val attachments: List<AttachmentEntity>,
-        val showTail: Boolean,
         val isFirstInRun: Boolean,
         val isLastInRun: Boolean,
     ) : ChatUiItem {

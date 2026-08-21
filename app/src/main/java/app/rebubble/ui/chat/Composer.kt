@@ -170,7 +170,9 @@ private fun SendButtonSlot(
                 shape = CircleShape,
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White,
+                    // Not Color.White: dark-theme `primary` is a light tone, and white on it is
+                    // 1.71:1 — below the 3:1 minimum for icons. `onPrimary` is 10.01:1 there.
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
             ) {
                 Icon(

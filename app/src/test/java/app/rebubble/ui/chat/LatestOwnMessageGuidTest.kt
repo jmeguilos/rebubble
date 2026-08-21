@@ -34,7 +34,6 @@ class LatestOwnMessageGuidTest {
             sendStatus = SendStatus.SENT,
         ),
         attachments = emptyList(),
-        showTail = true,
         isFirstInRun = true,
         isLastInRun = true,
     )

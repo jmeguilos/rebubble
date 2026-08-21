@@ -38,16 +38,16 @@ class MessageRunGroupingTest {
     )
 
     @Test
-    fun `single bubble is first last and has tail`() {
+    fun `single bubble is both first and last in its run`() {
         val flags = computeBubbleRunFlags(listOf(msg("a", 1_000L)))
         assertEquals(
-            BubbleRunFlags(showTail = true, isFirstInRun = true, isLastInRun = true),
+            BubbleRunFlags(isFirstInRun = true, isLastInRun = true),
             flags["a"],
         )
     }
 
     @Test
-    fun `same sender within 60s groups with tail only on last`() {
+    fun `same sender within 60s groups with the run seam only on the last bubble`() {
         val flags = computeBubbleRunFlags(
             listOf(
                 msg("a", 1_000L),
@@ -55,9 +55,9 @@ class MessageRunGroupingTest {
                 msg("c", 50_000L),
             ),
         )
-        assertEquals(BubbleRunFlags(showTail = false, isFirstInRun = true, isLastInRun = false), flags["a"])
-        assertEquals(BubbleRunFlags(showTail = false, isFirstInRun = false, isLastInRun = false), flags["b"])
-        assertEquals(BubbleRunFlags(showTail = true, isFirstInRun = false, isLastInRun = true), flags["c"])
+        assertEquals(BubbleRunFlags(isFirstInRun = true, isLastInRun = false), flags["a"])
+        assertEquals(BubbleRunFlags(isFirstInRun = false, isLastInRun = false), flags["b"])
+        assertEquals(BubbleRunFlags(isFirstInRun = false, isLastInRun = true), flags["c"])
     }
 
     @Test
@@ -68,9 +68,8 @@ class MessageRunGroupingTest {
                 msg("b", 1_000L + RUN_GROUP_WINDOW_MS + 1),
             ),
         )
-        assertTrue(flags["a"]!!.showTail)
         assertTrue(flags["a"]!!.isLastInRun)
-        assertTrue(flags["b"]!!.showTail)
+        assertTrue(flags["b"]!!.isLastInRun)
         assertTrue(flags["b"]!!.isFirstInRun)
     }
 
@@ -82,8 +81,7 @@ class MessageRunGroupingTest {
                 msg("b", 1_000L + RUN_GROUP_WINDOW_MS),
             ),
         )
-        assertFalse(flags["a"]!!.showTail)
-        assertTrue(flags["b"]!!.showTail)
+        assertFalse(flags["a"]!!.isLastInRun)
         assertTrue(flags["a"]!!.isFirstInRun)
         assertTrue(flags["b"]!!.isLastInRun)
     }
@@ -96,8 +94,8 @@ class MessageRunGroupingTest {
                 msg("them", 2_000L, isFromMe = false, senderAddress = "+1"),
             ),
         )
-        assertTrue(flags["me"]!!.showTail)
-        assertTrue(flags["them"]!!.showTail)
+        assertTrue(flags["me"]!!.isLastInRun)
+        assertTrue(flags["them"]!!.isLastInRun)
     }
 
     @Test
@@ -108,8 +106,8 @@ class MessageRunGroupingTest {
                 msg("b", 2_000L, isFromMe = false, senderAddress = "+2"),
             ),
         )
-        assertTrue(flags["a"]!!.showTail)
-        assertTrue(flags["b"]!!.showTail)
+        assertTrue(flags["a"]!!.isLastInRun)
+        assertTrue(flags["b"]!!.isLastInRun)
     }
 
     @Test
@@ -120,8 +118,8 @@ class MessageRunGroupingTest {
                 msg("b", 2_000L, isFromMe = false, senderAddress = "+1"),
             ),
         )
-        assertFalse(flags["a"]!!.showTail)
-        assertTrue(flags["b"]!!.showTail)
+        assertFalse(flags["a"]!!.isLastInRun)
+        assertTrue(flags["b"]!!.isLastInRun)
     }
 
     @Test
@@ -135,8 +133,8 @@ class MessageRunGroupingTest {
         )
         assertEquals(setOf("a", "b"), flags.keys)
         // a and b still group across the ignored event (same sender, within window)
-        assertFalse(flags["a"]!!.showTail)
-        assertTrue(flags["b"]!!.showTail)
+        assertFalse(flags["a"]!!.isLastInRun)
+        assertTrue(flags["b"]!!.isLastInRun)
     }
 
     @Test
