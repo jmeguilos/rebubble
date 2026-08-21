@@ -263,7 +263,10 @@ fun ChatScreen(
                                     selected = selectedGuid == item.message.guid,
                                     showDeliveryReceipt = item.message.guid == latestOwnGuid,
                                     // Tap reveals timestamp; long-press reserved for a future menu.
-                                    onLongPress = { /* reserved for actions menu */ },
+                                    // Left null on purpose: MessageBubble only advertises the
+                                    // long-press action to accessibility services when a real
+                                    // handler exists. M2's action sheet supplies one.
+                                    onLongPress = null,
                                     onTap = {
                                         selectedGuid =
                                             if (selectedGuid == item.message.guid) {
@@ -325,6 +328,10 @@ private fun ChatAppBar(
                 imageLoader = imageLoader,
                 size = ChatAvatarSizeCompact,
                 hueKey = hueKey,
+                // Nothing else on this screen says "group": the title is just a list of names and
+                // the app bar is not a merged, labelled row, so the glyph has to say it. 1:1 chats
+                // stay unlabelled — the adjacent title already names the person.
+                contentDescription = if (isGroup) "Group conversation" else null,
             )
             Text(
                 text = title,

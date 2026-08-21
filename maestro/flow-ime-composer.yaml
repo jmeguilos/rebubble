@@ -43,9 +43,13 @@ appId: app.rebubble.android
 - takeScreenshot: ime-03-multiline-draft
 
 # Sending must return the composer to its keyboard-up resting position, not jump.
-- tapOn:
-    accessibilityText: "Send"
+# NOTE (Maestro 2.6.0): the selector property `accessibilityText` was removed from the schema —
+# flows using it now fail to *parse*. A plain `text:` selector matches an element's accessibility
+# label as well as its text, so it is the current spelling for this tap.
+- tapOn: "Send"
+# Maestro text selectors are full-match regexes, so a prefix of the sent message never matches the
+# bubble (whose label is the whole 105-character string). Anchored wildcards make the intent explicit.
 - extendedWaitUntil:
-    visible: "One line of draft text"
+    visible: ".*One line of draft text.*"
     timeout: 30000
 - takeScreenshot: ime-04-after-send

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -43,6 +44,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -273,7 +275,12 @@ private fun ChatListHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 12.dp),
+            // 8dp/12dp before the gear's target slot grew from 32dp to 48dp. The Row's height is
+            // set by its tallest child, so keeping the old padding moved the whole header — and the
+            // list under it — down 16dp. Removing 8dp from each edge holds the band at 52dp and
+            // leaves both the title and the painted gear on exactly the pixels they had before
+            // (both are centre-aligned, so only the band's height moves them).
+            .padding(start = 20.dp, end = 12.dp, top = 0.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -294,7 +301,14 @@ private fun SettingsAvatarButton(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.size(HeaderIconSize),
+        // Two different properties: the card fixes the *painted* diameter at 32dp, M3 fixes the
+        // *touch* target at 48dp. `minimumInteractiveComponentSize()` reconciles them by growing
+        // the layout slot to 48dp and centring the 32dp circle inside it — nothing gets bigger on
+        // screen. `Surface(onClick=)` does not apply it itself (only IconButton / Checkbox / … do),
+        // so without this the gear is a 32dp target wedged against the screen edge.
+        modifier = modifier
+            .minimumInteractiveComponentSize()
+            .size(HeaderIconSize),
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
@@ -351,6 +365,12 @@ private fun StartChatFab(
 /**
  * All / Unread / Groups chips (card anatomy: 32dp tall, 8dp radius, selected = secondaryContainer,
  * unselected = transparent with an outline-variant border).
+ *
+ * No `minimumInteractiveComponentSize()` here on purpose: measured against material3
+ * 1.5.0-alpha24, `FilterChip` already lays itself out in a 48dp slot around its 32dp fill (painted
+ * 32dp, slot 48dp, touch 48dp — see TouchTargetSizeTest). Adding the modifier would be a no-op, and
+ * "compensating" this Row's padding for a growth that never happens would raise the chips 8dp and
+ * shrink the strip.
  */
 @Composable
 private fun ChatFilterChips(
@@ -405,6 +425,33 @@ private fun ChatFilterChips(
                 },
             )
         }
+    }
+}
+
+/**
+ * The row's single accessibility label: title, preview, relative time, unread count — in that
+ * reading order, spelled out ("2 unread messages", never a bare "2").
+ *
+ * Parts are joined into sentences so a screen reader pauses between them, and each part is kept
+ * verbatim: the title and preview substrings have to survive into the description, because
+ * text-based UI automation matches on them.
+ */
+internal fun chatListRowDescription(
+    title: String,
+    preview: String?,
+    relativeTime: String,
+    unreadCount: Int,
+): String {
+    val parts = buildList {
+        add(title)
+        if (!preview.isNullOrBlank()) add(preview)
+        if (relativeTime.isNotEmpty()) add(relativeTime)
+        if (unreadCount > 0) {
+            add(if (unreadCount == 1) "1 unread message" else "$unreadCount unread messages")
+        }
+    }
+    return parts.joinToString(separator = " ") { part ->
+        if (part.endsWith('.') || part.endsWith('?') || part.endsWith('!')) part else "$part."
     }
 }
 
@@ -500,12 +547,30 @@ private fun ChatListRow(
         }
     }
     val isUnread = item.unreadCount > 0
+    val rowDescription = chatListRowDescription(
+        title = item.title,
+        preview = item.lastMessagePreview,
+        relativeTime = timestamp,
+        unreadCount = item.unreadCount,
+    )
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(RowMinHeight)
-            .clickable(onClick = onClick)
+            // A *minimum*, not a fixed height. Measured on API 35, where text scales non-linearly:
+            // titleMedium + bodyMedium come to exactly 76dp at 200% font scale — the old fixed
+            // height, with zero headroom — and to 88dp at 250%, which a fixed 76dp box can only
+            // deliver by clipping the preview line.
+            .heightIn(min = RowMinHeight)
+            .clickable(onClick = onClick, onClickLabel = "Open conversation")
+            // `clickable` already merges descendants, so TalkBack sees one node — but its label was
+            // the raw concatenation of every child, monogram initials and a bare unread number
+            // included ("MC, Maya Chen, …, 2"). An explicit description replaces that with one
+            // sentence. The child Text nodes stay in the platform accessibility tree (Compose keeps
+            // exposing them; merging only changes which node a screen reader *focuses*), so
+            // text-based automation — the Maestro flows in `maestro/` select rows by title and
+            // preview — keeps working.
+            .semantics(mergeDescendants = true) { contentDescription = rowDescription }
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -567,8 +632,11 @@ private fun ChatListRow(
 }
 
 /**
- * Unread count pill: 20dp min-width / 20dp tall, primary on onPrimary, capped at `99+` so a long
+ * Unread count pill: 20dp minimum in both axes, primary on onPrimary, capped at `99+` so a long
  * backlog can never widen the row's trailing column.
+ *
+ * Both axes are minimums. The height used to be fixed at 20dp around a 12sp label: measured, that
+ * label already needs 24dp at 200% font scale, so the digits were being clipped.
  */
 @Composable
 private fun UnreadBadge(
@@ -577,8 +645,7 @@ private fun UnreadBadge(
 ) {
     Box(
         modifier = modifier
-            .defaultMinSize(minWidth = UnreadBadgeSize)
-            .height(UnreadBadgeSize)
+            .defaultMinSize(minWidth = UnreadBadgeSize, minHeight = UnreadBadgeSize)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.primary)
             .padding(horizontal = 6.dp),

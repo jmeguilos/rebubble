@@ -8,7 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,9 +32,11 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
@@ -57,7 +59,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** Own bubbles still in-flight ([SendStatus.SENDING]) render at reduced emphasis vs SENT. */
+/**
+ * Own bubbles still in-flight ([SendStatus.SENDING]) render at reduced emphasis vs SENT.
+ *
+ * Emphasis only — never the sole signal. [bubbleStateDescription] carries "Sending" for anyone who
+ * cannot compare two opacities.
+ */
 internal const val SendingBubbleAlpha = 0.65f
 
 private val BubbleOuterRadius = 20.dp
@@ -70,7 +77,7 @@ fun MessageBubble(
     item: ChatUiItem.Bubble,
     isSms: Boolean,
     selected: Boolean,
-    onLongPress: () -> Unit,
+    onLongPress: (() -> Unit)? = null,
     onTap: () -> Unit = {},
     onRetry: () -> Unit,
     onDownloadAttachment: (String) -> Unit,
@@ -82,7 +89,6 @@ fun MessageBubble(
 ) {
     val fromMe = item.message.isFromMe
     val maxWidth = (LocalConfiguration.current.screenWidthDp * 0.76f).dp
-    val density = LocalDensity.current
     val motion = RebubbleMotion
     val shape = remember(fromMe, item.isFirstInRun, item.isLastInRun) {
         bubbleShapeFor(
@@ -105,6 +111,16 @@ fun MessageBubble(
         fromMe -> OnIMessageBubble
         else -> MaterialTheme.colorScheme.onSurface
     }
+
+    // Computed here rather than inside the semantics lambda so the lambda captures a plain String.
+    val spokenState = bubbleStateDescription(
+        fromMe = fromMe,
+        isSending = item.isSending,
+        isFailed = item.isFailed,
+        dateDelivered = item.message.dateDelivered,
+        dateRead = item.message.dateRead,
+        revealedTime = if (selected) formatBubbleTime(item.message.dateCreated) else null,
+    )
 
     val reduceMotion = !ValueAnimator.areAnimatorsEnabled()
     val scale = remember {
@@ -135,7 +151,8 @@ fun MessageBubble(
                 bottom = if (item.isLastInRun) 6.dp else 2.dp,
             )
             .graphicsLayer {
-                // SENDING own bubbles stay visually quieter than SENT (no text label).
+                // SENDING own bubbles stay visually quieter than SENT. The alpha is now decoration
+                // only: the bubble's state description is what actually conveys "Sending".
                 val sendingDim =
                     if (fromMe && item.isSending) SendingBubbleAlpha else 1f
                 this.alpha = alpha.value * sendingDim
@@ -149,11 +166,37 @@ fun MessageBubble(
                 .widthIn(max = maxWidth)
                 .clip(shape)
                 .background(containerColor)
-                .pointerInput(item.key) {
-                    detectTapGestures(
-                        onLongPress = { onLongPress() },
-                        onTap = { onTap() },
-                    )
+                // Was a raw `pointerInput { detectTapGestures(...) }`, which gave the bubble no
+                // ripple, no press state, no focus, and — because it registers no semantics at all —
+                // no way for TalkBack to discover that tapping does anything, even though tapping
+                // is what reveals the timestamp. `combinedClickable` supplies all of that.
+                //
+                // `ChatScreen`'s LazyColumn keeps its own tap-to-deselect `pointerInput`; a
+                // clickable child consumes the gesture first, so bubble taps still win and taps on
+                // empty thread space still clear the selection (asserted in
+                // MessageBubbleSemanticsTest).
+                .combinedClickable(
+                    onClick = onTap,
+                    // Deliberately nullable. Announcing "Message options" to TalkBack while the
+                    // handler is a placeholder would advertise an affordance that does nothing,
+                    // which is worse than advertising none. The action sheet (M2) passes a real
+                    // lambda here and the label appears with it.
+                    onLongClick = onLongPress,
+                    onLongClickLabel = onLongPress?.let { "Message options" },
+                    role = Role.Button,
+                    onClickLabel = if (selected) "Hide timestamp" else "Show timestamp",
+                )
+                // `combinedClickable` already merges descendants, so this is explicit rather than
+                // additive — but the state description is the point: SendStatus.SENDING used to be
+                // signalled *only* by SendingBubbleAlpha, so "sending" and "sent" were identical to
+                // a screen reader and to anyone who cannot compare two opacities.
+                //
+                // Merging keeps the body text (it lands in the merged node's text) and does not
+                // strand AttachmentContent's Download / Retry button: a merging node keeps its
+                // nearest merging descendants as children, and that button is `clickable`, which
+                // merges. Asserted in MessageBubbleSemanticsTest.
+                .semantics(mergeDescendants = true) {
+                    if (spokenState != null) stateDescription = spokenState
                 }
                 .padding(
                     horizontal = if (item.attachments.isEmpty()) 12.dp else 4.dp,
@@ -222,6 +265,40 @@ fun MessageBubble(
     }
 }
 
+/**
+ * The bubble's spoken state: send status, plus the revealed timestamp when the bubble is selected.
+ *
+ * Status wording is deliberately the same vocabulary the screen already paints — "Not sent" is the
+ * retry button's own words, and Delivered/Read come from [deliveryReceiptLabel] rather than a second
+ * copy of its rules. The one difference is the gate: the *visible* receipt is limited to the latest
+ * own message ([MessageBubble]'s `showDeliveryReceipt`), while every own bubble can announce its
+ * status, since a screen-reader user is reading them one at a time anyway.
+ *
+ * Incoming bubbles have no send status at all, so they announce nothing unless their timestamp is
+ * showing.
+ */
+internal fun bubbleStateDescription(
+    fromMe: Boolean,
+    isSending: Boolean,
+    isFailed: Boolean,
+    dateDelivered: Long?,
+    dateRead: Long?,
+    revealedTime: String?,
+): String? {
+    val status = when {
+        !fromMe -> null
+        isFailed -> "Not sent"
+        isSending -> "Sending"
+        else -> deliveryReceiptLabel(
+            show = true,
+            dateDelivered = dateDelivered,
+            dateRead = dateRead,
+        ) ?: "Sent"
+    }
+    val parts = listOfNotNull(status, revealedTime)
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(", ")
+}
+
 /** "Read" wins over "Delivered"; null when neither timestamp is set or [show] is false. */
 internal fun deliveryReceiptLabel(
     show: Boolean,
@@ -285,7 +362,6 @@ private fun OwnRunPreview() {
                 item = previewBubble("1", "Hey", first = true, last = false),
                 isSms = false,
                 selected = false,
-                onLongPress = {},
                 onRetry = {},
                 onDownloadAttachment = {},
                 imageLoader = ImageLoader.Builder(ctx).build(),
@@ -295,7 +371,6 @@ private fun OwnRunPreview() {
                 item = previewBubble("2", "Want to go?", first = false, last = true),
                 isSms = false,
                 selected = true,
-                onLongPress = {},
                 onRetry = {},
                 onDownloadAttachment = {},
                 imageLoader = ImageLoader.Builder(ctx).build(),
@@ -315,7 +390,6 @@ private fun VariantsPreview() {
                 item = previewBubble("o", "Incoming", fromMe = false, first = true, last = true),
                 isSms = false,
                 selected = false,
-                onLongPress = {},
                 onRetry = {},
                 onDownloadAttachment = {},
                 imageLoader = ImageLoader.Builder(ctx).build(),
@@ -325,7 +399,6 @@ private fun VariantsPreview() {
                 item = previewBubble("s", "SMS out", first = true, last = true),
                 isSms = true,
                 selected = false,
-                onLongPress = {},
                 onRetry = {},
                 onDownloadAttachment = {},
                 imageLoader = ImageLoader.Builder(ctx).build(),
@@ -341,7 +414,6 @@ private fun VariantsPreview() {
                 ),
                 isSms = false,
                 selected = false,
-                onLongPress = {},
                 onRetry = {},
                 onDownloadAttachment = {},
                 imageLoader = ImageLoader.Builder(ctx).build(),
@@ -366,7 +438,6 @@ private fun SendingOwnPreview() {
             ),
             isSms = false,
             selected = false,
-            onLongPress = {},
             onRetry = {},
             onDownloadAttachment = {},
             imageLoader = ImageLoader.Builder(ctx).build(),
@@ -393,7 +464,6 @@ private fun DeliveryReceiptPreview() {
                 isSms = false,
                 selected = false,
                 showDeliveryReceipt = true,
-                onLongPress = {},
                 onRetry = {},
                 onDownloadAttachment = {},
                 imageLoader = ImageLoader.Builder(ctx).build(),
@@ -411,7 +481,6 @@ private fun DeliveryReceiptPreview() {
                 isSms = true,
                 selected = false,
                 showDeliveryReceipt = true,
-                onLongPress = {},
                 onRetry = {},
                 onDownloadAttachment = {},
                 imageLoader = ImageLoader.Builder(ctx).build(),

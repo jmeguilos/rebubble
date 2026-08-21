@@ -4,7 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -32,7 +32,10 @@ fun SearchConversationsPill(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp)
+            // Minimum, not fixed. At default scale this still measures exactly 56dp; `bodyLarge`
+            // plus its padding passes 56dp at 200% font scale and keeps growing beyond that, and a
+            // fixed height has nowhere to put the overflow but under the clip.
+            .heightIn(min = 56.dp)
             .clickable(
                 onClick = onClick,
                 role = Role.Button,
@@ -43,7 +46,9 @@ fun SearchConversationsPill(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                // Vertical padding only bites once the label outgrows the 56dp minimum, and then it
+                // keeps the text off the pill's edges.
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {

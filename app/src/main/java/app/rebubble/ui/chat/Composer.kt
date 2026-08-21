@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -32,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -96,7 +96,11 @@ fun Composer(
                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
                 )
             },
-            modifier = Modifier.size(ComposerControlSize),
+            // Painted size stays the card's 44dp; the layout slot grows to M3's 48dp minimum and
+            // centres the circle in it. `Surface(onClick=)` does not enforce the minimum itself.
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .size(ComposerControlSize),
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
@@ -109,12 +113,20 @@ fun Composer(
                 )
             }
         }
+        // The field is 56dp tall, not the card's 44dp, and that is deliberate.
+        //
+        // `heightIn(min = 44.dp)` used to sit here and was a no-op: a filled M3 `TextField` enforces
+        // `TextFieldDefaults.MinHeight` (56dp) internally, so the minimum never bound. The honest
+        // options were to hand-roll the field (`BasicTextField` + `DecorationBox` with content
+        // padding that really reaches 44dp) or to accept 56dp. 56dp wins: shrinking the field to
+        // 44dp would manufacture a *new* sub-48dp touch target in the very change that is removing
+        // them, and the field is the largest, most-used target in the composer. The row is
+        // bottom-aligned, so the 48dp control slots sit flush with the field's bottom edge and the
+        // 12dp difference reads as the field being taller, not as misalignment.
         TextField(
             value = text,
             onValueChange = { text = it },
-            modifier = Modifier
-                .weight(1f)
-                .heightIn(min = ComposerControlSize),
+            modifier = Modifier.weight(1f),
             placeholder = {
                 Text(
                     text = placeholder,
@@ -155,8 +167,10 @@ private fun SendButtonSlot(
     exitFade: androidx.compose.animation.core.FiniteAnimationSpec<Float>,
     exitScale: androidx.compose.animation.core.FiniteAnimationSpec<Float>,
 ) {
+    // The slot reserves M3's 48dp minimum even while the button is absent, so the field does not
+    // resize when the first character is typed.
     Box(
-        modifier = Modifier.size(ComposerControlSize),
+        modifier = Modifier.minimumInteractiveComponentSize(),
         contentAlignment = Alignment.Center,
     ) {
         AnimatedVisibility(
@@ -166,7 +180,12 @@ private fun SendButtonSlot(
         ) {
             FilledIconButton(
                 onClick = onSend,
-                modifier = Modifier.size(ComposerControlSize),
+                // IconButton applies the interactive minimum itself, but an outer fixed `size`
+                // would clamp it back to 44dp, so the minimum is declared ahead of it: 48dp slot,
+                // 44dp painted circle.
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .size(ComposerControlSize),
                 shape = CircleShape,
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.primary,

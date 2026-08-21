@@ -1,7 +1,6 @@
 package app.rebubble.ui.common
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -18,7 +17,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -43,6 +45,10 @@ val ChatAvatarSizeCompact = 40.dp
  * — the design card shows the group row tinted like any named contact, with the glyph taking the
  * hue's foreground. Only the unknown-number person glyph stays neutral (surfaceContainerHighest +
  * onSurfaceVariant), which is what keeps it reading as "no identity known".
+ *
+ * [contentDescription] is null wherever the avatar sits inside an already-labelled merged row (the
+ * conversation list), and set where the avatar is the only thing carrying that information — the
+ * chat app bar, where a group chat would otherwise never be announced as a group.
  */
 @Composable
 fun ChatAvatar(
@@ -54,12 +60,17 @@ fun ChatAvatar(
     size: Dp = ChatAvatarSizeLarge,
     /** Stable key for hue selection — chat guid, or sender address for per-sender. */
     hueKey: String = title,
+    contentDescription: String? = null,
 ) {
     val label = remember(title) { avatarLabelForTitle(title) }
+    val labelModifier = contentDescription?.let { description ->
+        Modifier.semantics { this.contentDescription = description }
+    } ?: Modifier
     Box(
         modifier = modifier
             .size(size)
-            .clip(CircleShape),
+            .clip(CircleShape)
+            .then(labelModifier),
         contentAlignment = Alignment.Center,
     ) {
         if (!avatarPath.isNullOrBlank() && File(avatarPath).isFile) {
@@ -94,7 +105,7 @@ fun MonogramCircle(
     modifier: Modifier = Modifier,
     hueKey: String = initials,
 ) {
-    val dark = isSystemInDarkTheme()
+    val dark = isDarkColorScheme()
     val hue = remember(hueKey, dark) { avatarHueFor(hueKey, dark) }
     val textStyle = if (size >= ChatAvatarSizeLarge) {
         MaterialTheme.typography.titleMedium
@@ -143,7 +154,7 @@ fun GroupMonogram(
     size: Dp = ChatAvatarSizeLarge,
     hueKey: String = "",
 ) {
-    val dark = isSystemInDarkTheme()
+    val dark = isDarkColorScheme()
     val hue = remember(hueKey, dark) { avatarHueFor(hueKey, dark) }
     GlyphAvatar(
         size = size,
@@ -153,6 +164,20 @@ fun GroupMonogram(
         foreground = hue.foreground,
     )
 }
+
+/**
+ * Whether the *theme in effect* is dark, which is not the same question as
+ * [androidx.compose.foundation.isSystemInDarkTheme].
+ *
+ * The avatar hue palettes come in light and dark variants and have to match the colour scheme they
+ * are painted against. Asking the system directly disagreed with the scheme whenever the theme was
+ * forced — the in-app "App colour theme" override, and `darkTheme = true` previews rendered on a
+ * light host — producing dark-palette monograms on a light surface. The scheme itself is the only
+ * source that cannot disagree with itself.
+ */
+@Composable
+private fun isDarkColorScheme(): Boolean =
+    MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
 @Composable
 private fun GlyphAvatar(

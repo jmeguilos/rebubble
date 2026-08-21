@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -71,6 +71,7 @@ private val BrandBubbleShape = RoundedCornerShape(
     bottomEnd = 28.dp,
     bottomStart = 10.dp,
 )
+/** CTA *minimum* height: a fixed 56dp clipped the label from ~150% font scale upwards. */
 private val CtaHeight = 56.dp
 private val CtaGap = 16.dp
 private val ScreenRhythm = 24.dp
@@ -321,7 +322,7 @@ private fun WelcomePane(
                 onClick = onScanQr,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(CtaHeight),
+                    .heightIn(min = CtaHeight),
             ) {
                 Text(OnboardingCopy.SCAN_QR)
             }
@@ -330,7 +331,7 @@ private fun WelcomePane(
                 onClick = onEnterManual,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(CtaHeight),
+                    .heightIn(min = CtaHeight),
             ) {
                 Text(OnboardingCopy.ENTER_MANUAL)
             }
@@ -432,7 +433,7 @@ private fun ManualPane(
                     enabled = !state.isSubmitting && url.isNotBlank() && password.isNotBlank(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(CtaHeight),
+                        .heightIn(min = CtaHeight),
                 ) {
                     Text(OnboardingCopy.CONNECT)
                 }
@@ -516,7 +517,7 @@ private fun ErrorPane(
                 onClick = onRetry,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(CtaHeight),
+                    .heightIn(min = CtaHeight),
             ) {
                 Text(OnboardingCopy.RETRY)
             }
@@ -525,7 +526,7 @@ private fun ErrorPane(
                 onClick = onBack,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(CtaHeight),
+                    .heightIn(min = CtaHeight),
             ) {
                 Text(OnboardingCopy.BACK)
             }

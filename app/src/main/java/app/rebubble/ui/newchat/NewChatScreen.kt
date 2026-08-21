@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -48,6 +48,7 @@ import app.rebubble.ui.theme.ListSheetTopShape
 import app.rebubble.ui.theme.RebubbleTheme
 import kotlinx.coroutines.flow.collectLatest
 
+/** CTA *minimum* height: a fixed 56dp clipped the label from ~150% font scale upwards. */
 private val CtaHeight = 56.dp
 private val ScreenRhythm = 24.dp
 
@@ -190,7 +191,7 @@ fun NewChatScreen(
                         enabled = canSend,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(CtaHeight),
+                            .heightIn(min = CtaHeight),
                     ) {
                         if (state.isSending) {
                             CircularProgressIndicator(

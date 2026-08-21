@@ -15,8 +15,10 @@ appId: app.rebubble.android
     timeout: 15000
 - tapOn: "Message"
 - inputText: "Fail then retry"
-- tapOn:
-    accessibilityText: "Send"
+# NOTE (Maestro 2.6.0): the selector property `accessibilityText` was removed from the schema —
+# flows using it now fail to *parse*. A plain `text:` selector matches an element's accessibility
+# label as well as its text, so it is the current spelling for this tap.
+- tapOn: "Send"
 - extendedWaitUntil:
     visible: "Not sent — tap to retry"
     timeout: 30000

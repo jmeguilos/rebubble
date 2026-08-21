@@ -13,6 +13,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,7 +71,9 @@ fun SyncStatusChip(
                     color = MaterialTheme.colorScheme.errorContainer,
                 ) {
                     Row(
-                        modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+                        // No vertical padding: the dismiss button's 48dp slot (below) already sets
+                        // this pill's height, so 2dp top/bottom would only make it 52dp.
+                        modifier = Modifier.padding(start = 12.dp, end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
@@ -84,7 +87,14 @@ fun SyncStatusChip(
                                 dismissed = true
                                 onDismissError?.invoke()
                             },
-                            modifier = Modifier.size(32.dp),
+                            // IconButton applies the 48dp interactive minimum itself, but the
+                            // explicit 32dp size clamped it back down; declaring the minimum first
+                            // keeps the 32dp state layer inside a real 48dp target. Measured cost:
+                            // the pill goes from 36dp to 48dp tall — the honest price of a dismiss
+                            // control a finger can actually hit.
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .size(32.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Close,
