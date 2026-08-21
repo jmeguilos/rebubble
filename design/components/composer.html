@@ -19,10 +19,18 @@
   /* M3 baseline neutrals (lavender-tinted) */
   --surface: #FEF7FF; --surface-container-low: #F7F2FA; --surface-container: #F3EDF7;
   --surface-container-high: #ECE6F0; --surface-container-highest: #E6E0E9;
-  --on-surface: #1D1B20; --on-surface-variant: #49454F; --outline-variant: #CAC4D0;
+  --on-surface: #1D1B20; --on-surface-variant: #49454F;
+  /* outline (interactive borders, 3:1 min) is a DIFFERENT token from outline-variant
+     (decorative dividers). Aliasing them is what produced 1.62:1 chip borders. */
+  --outline: #79747E; --outline-variant: #CAC4D0;
   --error: #B3261E; --error-container: #F9DEDC; --on-error-container: #410E0B;
-  /* semantics — never themed */
-  --imessage: #0A7CFF; --sms: #34C759; --on-bubble: #FFFFFF;
+  /* Semantics — never themed, but contrast-constrained. A bubble fill may not be chosen for
+     brand fidelity alone: its paired on-color must clear WCAG AA (4.5:1) for 16sp body text.
+     Ratios below are measured, not estimated. */
+  --imessage: #0A6ADF; --on-imessage: #FFFFFF;   /* 5.07:1 — was #0A7CFF, only 3.93:1 */
+  --sms: #34C759;      --on-sms: #0A2E12;        /* 6.70:1 — green kept, text darkened
+                                                    (white on #34C759 is 2.22:1) */
+  --on-bubble: #FFFFFF;                          /* legacy alias of --on-imessage */
   --incoming: #ECE6F0; --on-incoming: #1D1B20;
   /* shape scale */
   --radius-sheet: 28px; --radius-bubble: 20px; --radius-tight: 5px; --radius-chip: 8px;
@@ -39,7 +47,8 @@
   --secondary-container: #434659; --on-secondary-container: #DFE1F9;
   --surface: #141218; --surface-container-low: #1D1B20; --surface-container: #211F26;
   --surface-container-high: #2B292F; --surface-container-highest: #36343B;
-  --on-surface: #E6E0E9; --on-surface-variant: #CAC4D0; --outline-variant: #49454F;
+  --on-surface: #E6E0E9; --on-surface-variant: #CAC4D0;
+  --outline: #938F99; --outline-variant: #49454F;   /* 5.87:1 vs dark surface */
   --error: #F2B8B5; --error-container: #8C1D18; --on-error-container: #F9DEDC;
   --incoming: #2B292F; --on-incoming: #E6E0E9;
   --av1-bg:#5D1133; --av1-fg:#FFD9E2;  --av2-bg:#16307E; --av2-fg:#DCE1FF;
@@ -54,6 +63,11 @@ body { font-family: var(--font-body); color: var(--on-surface); -webkit-font-smo
   body { padding: 24px; background: var(--surface-container); max-width: 560px; }
   .label { font-size: 11px; color: var(--on-surface-variant); margin: 16px 0 8px; font-weight: 500; letter-spacing: .3px; text-transform: uppercase; }
   .composer { display: flex; align-items: flex-end; gap: 10px; }
+  /* 44px is the PAINTED size for .plus / .send; the TOUCH target must be 48dp
+     (Modifier.minimumInteractiveComponentSize). Painted size and touch size are different
+     properties — the card governs the former, M3's 48dp minimum governs the latter.
+     Note .field: a filled M3 TextField enforces a 56dp internal minimum, so heightIn(min = 44.dp)
+     on it is a no-op — align the row to the bottom rather than expecting a 44dp field. */
   .plus { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-container-high); color: var(--on-surface-variant);
           display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
   .field { flex: 1; min-height: 44px; border-radius: 24px; background: var(--surface-container-high); padding: 11px 18px; font-size: 16px; color: var(--on-surface-variant); }

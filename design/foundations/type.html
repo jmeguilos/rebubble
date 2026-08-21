@@ -1,6 +1,6 @@
 <!-- @dsCard group="Foundations" -->
 <!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20..48,100..700,0..1&display=block" rel="stylesheet">
 <style>
 .ms { font-family:'Material Symbols Rounded'; font-weight:normal; font-style:normal; display:inline-flex; line-height:1;
@@ -19,10 +19,18 @@
   /* M3 baseline neutrals (lavender-tinted) */
   --surface: #FEF7FF; --surface-container-low: #F7F2FA; --surface-container: #F3EDF7;
   --surface-container-high: #ECE6F0; --surface-container-highest: #E6E0E9;
-  --on-surface: #1D1B20; --on-surface-variant: #49454F; --outline-variant: #CAC4D0;
+  --on-surface: #1D1B20; --on-surface-variant: #49454F;
+  /* outline (interactive borders, 3:1 min) is a DIFFERENT token from outline-variant
+     (decorative dividers). Aliasing them is what produced 1.62:1 chip borders. */
+  --outline: #79747E; --outline-variant: #CAC4D0;
   --error: #B3261E; --error-container: #F9DEDC; --on-error-container: #410E0B;
-  /* semantics — never themed */
-  --imessage: #0A7CFF; --sms: #34C759; --on-bubble: #FFFFFF;
+  /* Semantics — never themed, but contrast-constrained. A bubble fill may not be chosen for
+     brand fidelity alone: its paired on-color must clear WCAG AA (4.5:1) for 16sp body text.
+     Ratios below are measured, not estimated. */
+  --imessage: #0A6ADF; --on-imessage: #FFFFFF;   /* 5.07:1 — was #0A7CFF, only 3.93:1 */
+  --sms: #34C759;      --on-sms: #0A2E12;        /* 6.70:1 — green kept, text darkened
+                                                    (white on #34C759 is 2.22:1) */
+  --on-bubble: #FFFFFF;                          /* legacy alias of --on-imessage */
   --incoming: #ECE6F0; --on-incoming: #1D1B20;
   /* shape scale */
   --radius-sheet: 28px; --radius-bubble: 20px; --radius-tight: 5px; --radius-chip: 8px;
@@ -39,7 +47,8 @@
   --secondary-container: #434659; --on-secondary-container: #DFE1F9;
   --surface: #141218; --surface-container-low: #1D1B20; --surface-container: #211F26;
   --surface-container-high: #2B292F; --surface-container-highest: #36343B;
-  --on-surface: #E6E0E9; --on-surface-variant: #CAC4D0; --outline-variant: #49454F;
+  --on-surface: #E6E0E9; --on-surface-variant: #CAC4D0;
+  --outline: #938F99; --outline-variant: #49454F;   /* 5.87:1 vs dark surface */
   --error: #F2B8B5; --error-container: #8C1D18; --on-error-container: #F9DEDC;
   --incoming: #2B292F; --on-incoming: #E6E0E9;
   --av1-bg:#5D1133; --av1-fg:#FFD9E2;  --av2-bg:#16307E; --av2-fg:#DCE1FF;
@@ -55,10 +64,34 @@ body { font-family: var(--font-body); color: var(--on-surface); -webkit-font-smo
   .spec { display: grid; grid-template-columns: 200px 1fr; gap: 4px 24px; align-items: baseline; margin-bottom: 18px; }
   .meta { font-size: 11px; color: var(--on-surface-variant); }
 </style></head><body>
-<div class="spec"><div class="meta">Wordmark / display<br>Manrope 600 · 32</div><div style="font-family:var(--font-display);font-weight:600;font-size:32px">Rebubble</div></div>
-<div class="spec"><div class="meta">Screen title<br>Manrope 600 · 22</div><div style="font-family:var(--font-display);font-weight:600;font-size:22px">Connect to your server</div></div>
-<div class="spec"><div class="meta">Row title<br>Roboto 500 · 16</div><div style="font-weight:500;font-size:16px">Maya Chen</div></div>
+<div class="spec"><div class="meta">Onboarding hero / wordmark<br>Figtree 700 · 32 &nbsp;(headlineLarge)</div><div style="font-family:var(--font-display);font-weight:700;font-size:32px">Rebubble</div></div>
+<div class="spec"><div class="meta">Chat-list wordmark<br>Figtree 700 · 24 &nbsp;(headlineSmall)</div><div style="font-family:var(--font-display);font-weight:700;font-size:24px">Rebubble</div></div>
+<div class="spec"><div class="meta">Top-app-bar title<br>Figtree 600 · 22 &nbsp;(titleLarge)</div><div style="font-family:var(--font-display);font-weight:600;font-size:22px">Connect to your server</div></div>
+<div class="spec"><div class="meta">Avatar monogram<br>Figtree 600 · 22</div><div style="font-family:var(--font-display);font-weight:600;font-size:22px">MC</div></div>
+<div class="spec"><div class="meta">Row title<br>Roboto 500 · 16 &nbsp;(titleMedium)</div><div style="font-weight:500;font-size:16px">Maya Chen</div></div>
 <div class="spec"><div class="meta">Message / preview<br>Roboto 400 · 16 / 14</div><div style="font-size:16px">On my way — ten minutes <span style="font-size:14px;color:var(--on-surface-variant)">· preview text at 14</span></div></div>
-<div class="spec"><div class="meta">Timestamp / micro<br>Roboto 500 · 12</div><div style="font-size:12px;font-weight:500;color:var(--on-surface-variant)">14:32 · Delivered</div></div>
-<p class="meta" style="margin-top:8px">Rule: Manrope only for brand + screen titles (sparingly). Roboto (platform) carries all conversational text — messages must feel like the OS, not like the brand.</p>
+<div class="spec"><div class="meta">Timestamp / micro<br>Roboto 500 · 12 &nbsp;(labelMedium)</div><div style="font-size:12px;font-weight:500;color:var(--on-surface-variant)">14:32 · Delivered</div></div>
+
+<p class="meta" style="margin-top:14px;max-width:640px;line-height:1.6">
+<b>Role rule.</b> The display face (Figtree) is used <i>only</i> for the wordmark, the display/headline
+roles, <code>titleLarge</code>, and avatar monograms. Everything at 16sp and below — including
+<code>titleMedium</code> and <code>titleSmall</code> — uses the platform body face (Roboto), so that
+conversational text feels like the OS rather than like the brand. Two separate roles previously shared
+one "Screen title · 22" label here, which is what led an implementation to put
+<code>headlineMedium</code> (24sp) in a small top app bar where M3 specifies
+<code>titleLarge</code> (22sp).</p>
+
+<p class="meta" style="margin-top:10px;max-width:640px;line-height:1.6">
+<b>⚠ Figtree is a variable font, and its <code>fvar</code> default instance is Light 300.</b>
+Every declared face must carry explicit weight variation settings
+(<code>FontVariation.Settings(FontVariation.weight(n))</code>). Compose's 3- and 4-argument
+<code>Font(resId, weight, …)</code> overloads pass <i>no</i> variation settings, so the typeface
+instantiates at the font's 300 default and <i>every</i> weight renders Light — while still matching
+the requested weight exactly, so no synthetic bold rescues it. Declare 400/500/600/700 explicitly.</p>
+
+<p class="meta" style="margin-top:10px;max-width:640px;line-height:1.6">
+<b>Scale.</b> Sizes follow the M3 baseline type scale
+(<code>displaySmall</code> 36, <code>headlineLarge</code> 32, <code>headlineMedium</code> 28,
+<code>headlineSmall</code> 24, <code>titleLarge</code> 22). Any deviation is a deliberate density
+choice and must be recorded here, not discovered in the code.</p>
 </body></html>

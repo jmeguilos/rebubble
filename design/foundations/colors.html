@@ -1,6 +1,6 @@
 <!-- @dsCard group="Foundations" -->
 <!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Figtree:wght@600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20..48,100..700,0..1&display=block" rel="stylesheet">
 <style>
 .ms { font-family:'Material Symbols Rounded'; font-weight:normal; font-style:normal; display:inline-flex; line-height:1;
@@ -19,10 +19,18 @@
   /* M3 baseline neutrals (lavender-tinted) */
   --surface: #FEF7FF; --surface-container-low: #F7F2FA; --surface-container: #F3EDF7;
   --surface-container-high: #ECE6F0; --surface-container-highest: #E6E0E9;
-  --on-surface: #1D1B20; --on-surface-variant: #49454F; --outline-variant: #CAC4D0;
+  --on-surface: #1D1B20; --on-surface-variant: #49454F;
+  /* outline (interactive borders, 3:1 min) is a DIFFERENT token from outline-variant
+     (decorative dividers). Aliasing them is what produced 1.62:1 chip borders. */
+  --outline: #79747E; --outline-variant: #CAC4D0;
   --error: #B3261E; --error-container: #F9DEDC; --on-error-container: #410E0B;
-  /* semantics — never themed */
-  --imessage: #0A7CFF; --sms: #34C759; --on-bubble: #FFFFFF;
+  /* Semantics — never themed, but contrast-constrained. A bubble fill may not be chosen for
+     brand fidelity alone: its paired on-color must clear WCAG AA (4.5:1) for 16sp body text.
+     Ratios below are measured, not estimated. */
+  --imessage: #0A6ADF; --on-imessage: #FFFFFF;   /* 5.07:1 — was #0A7CFF, only 3.93:1 */
+  --sms: #34C759;      --on-sms: #0A2E12;        /* 6.70:1 — green kept, text darkened
+                                                    (white on #34C759 is 2.22:1) */
+  --on-bubble: #FFFFFF;                          /* legacy alias of --on-imessage */
   --incoming: #ECE6F0; --on-incoming: #1D1B20;
   /* shape scale */
   --radius-sheet: 28px; --radius-bubble: 20px; --radius-tight: 5px; --radius-chip: 8px;
@@ -39,7 +47,8 @@
   --secondary-container: #434659; --on-secondary-container: #DFE1F9;
   --surface: #141218; --surface-container-low: #1D1B20; --surface-container: #211F26;
   --surface-container-high: #2B292F; --surface-container-highest: #36343B;
-  --on-surface: #E6E0E9; --on-surface-variant: #CAC4D0; --outline-variant: #49454F;
+  --on-surface: #E6E0E9; --on-surface-variant: #CAC4D0;
+  --outline: #938F99; --outline-variant: #49454F;   /* 5.87:1 vs dark surface */
   --error: #F2B8B5; --error-container: #8C1D18; --on-error-container: #F9DEDC;
   --incoming: #2B292F; --on-incoming: #E6E0E9;
   --av1-bg:#5D1133; --av1-fg:#FFD9E2;  --av2-bg:#16307E; --av2-fg:#DCE1FF;
@@ -51,48 +60,61 @@ body { font-family: var(--font-body); color: var(--on-surface); -webkit-font-smo
 
 </style>
 <style>
-  body { padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #fff; }
-  .scheme { border-radius: 20px; padding: 20px; }
-  .scheme.light { background: var(--surface-container); }
-  .scheme.dark { background: #1F1F25; color: #E4E1E9; }
-  h2 { font-size: 15px; margin-bottom: 14px; letter-spacing: .2px; }
-  .row { display: flex; gap: 8px; margin-bottom: 8px; }
-  .chip { flex: 1; height: 56px; border-radius: 12px; padding: 8px 10px; font-size: 10px; line-height: 1.3; display: flex; flex-direction: column; justify-content: space-between; }
-  .chip b { font-size: 10px; font-weight: 500; opacity: .85; }
+  body { padding:24px; display:grid; grid-template-columns:1fr 1fr; gap:20px; background:#fff; align-items:start; }
+  .scheme { border-radius:20px; padding:20px; }
+  .scheme.light { background:var(--surface-container); color:var(--on-surface); }
+  .scheme.dark  { background:#211F26; color:#E6E0E9; }
+  h2 { font-size:15px; margin-bottom:6px; letter-spacing:.2px; font-family:var(--font-display); font-weight:600; }
+  .lede { font-size:11px; opacity:.75; margin-bottom:14px; line-height:1.5; }
+  .swatch { margin-bottom:8px; }
+  .chip { height:52px; border-radius:12px; padding:8px 10px; font-size:10px; line-height:1.3;
+          display:flex; flex-direction:column; justify-content:space-between; }
+  .chip b { font-size:10px; font-weight:500; }
+  .ratio { font-size:10px; margin:3px 0 0 10px; font-variant-numeric:tabular-nums; }
+  .ok { color:#1B6E2F; } .scheme.dark .ok { color:#7FD69A; }
+  .bad { color:#B3261E; font-weight:600; } .scheme.dark .bad { color:#F2B8B5; }
+  .na { opacity:.6; }
+  .foot { grid-column:1 / -1; font-size:11px; color:var(--on-surface-variant); line-height:1.6; max-width:900px; }
 </style></head><body>
 <div class="scheme light">
   <h2>Light — seed #2D4FE0 ultramarine</h2>
-  <div class="row">
-    <div class="chip" style="background:#2D4FE0;color:#fff"><b>primary</b>#2D4FE0</div>
-    <div class="chip" style="background:#DDE1FF;color:#00105C"><b>primary container</b>#DDE1FF</div>
-  </div>
-  <div class="row">
-    <div class="chip" style="background:#FBF8FF;color:#1B1B21;border:1px solid #E1DFEA"><b>surface (sheet)</b>#FBF8FF</div>
-    <div class="chip" style="background:#EFEDF7;color:#1B1B21"><b>surface container (tonal bg)</b>#EFEDF7</div>
-    <div class="chip" style="background:#E9E7F0;color:#1B1B21"><b>container high (incoming, pills)</b>#E9E7F0</div>
-  </div>
-  <div class="row">
-    <div class="chip" style="background:#0B84FE;color:#fff"><b>iMessage bubble (semantic)</b>#0B84FE</div>
-    <div class="chip" style="background:#34C759;color:#fff"><b>SMS bubble (semantic)</b>#34C759</div>
-    <div class="chip" style="background:#FFDAD6;color:#410002"><b>error container (failed)</b>#FFDAD6</div>
-  </div>
+  <div class="lede">Every pair carries its measured WCAG contrast ratio. A colour does not land on this
+  card until its ratio is computed and passing.</div>
+    <div class="swatch"><div class="chip" style="background:#2D4FE0;color:#FFFFFF"><b>primary</b><span>#2D4FE0 · text #FFFFFF</span></div><div class="ratio"><span class="ok">6.35:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#DCE1FF;color:#00105C"><b>primary container</b><span>#DCE1FF · text #00105C</span></div><div class="ratio"><span class="ok">13.23:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#DFE1F9;color:#171B2C"><b>secondary container (chip on)</b><span>#DFE1F9 · text #171B2C</span></div><div class="ratio"><span class="ok">13.24:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#FEF7FF;color:#1D1B20"><b>surface (sheet)</b><span>#FEF7FF · text #1D1B20</span></div><div class="ratio"><span class="ok">16.23:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#F3EDF7;color:#1D1B20"><b>surface container (tonal bg)</b><span>#F3EDF7 · text #1D1B20</span></div><div class="ratio"><span class="ok">14.85:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#ECE6F0;color:#1D1B20"><b>container high (incoming, pills)</b><span>#ECE6F0 · text #1D1B20</span></div><div class="ratio"><span class="ok">13.94:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#E6E0E9;color:#49454F"><b>container highest</b><span>#E6E0E9 · text #49454F</span></div><div class="ratio"><span class="ok">7.21:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#0A6ADF;color:#FFFFFF"><b>iMessage bubble (semantic)</b><span>#0A6ADF · text #FFFFFF</span></div><div class="ratio"><span class="ok">5.07:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#34C759;color:#0A2E12"><b>SMS bubble (semantic)</b><span>#34C759 · text #0A2E12</span></div><div class="ratio"><span class="ok">6.70:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#F9DEDC;color:#410E0B"><b>error container (failed)</b><span>#F9DEDC · text #410E0B</span></div><div class="ratio"><span class="ok">12.77:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#FEF7FF;color:#79747E"><b>outline on surface (borders)</b><span>#FEF7FF · text #79747E</span></div><div class="ratio"><span class="ok">4.33:1 ✓ (needs 3.0)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#FEF7FF;color:#CAC4D0"><b>outline-variant (dividers)</b><span>#FEF7FF · text #CAC4D0</span></div><div class="ratio"><span class="na">decorative — no minimum</span></div></div>
 </div>
 <div class="scheme dark">
   <h2>Dark</h2>
-  <div class="row">
-    <div class="chip" style="background:#B9C3FF;color:#00184A"><b>primary</b>#B9C3FF</div>
-    <div class="chip" style="background:#1E3163;color:#DDE1FF"><b>primary container</b>#1E3163</div>
-  </div>
-  <div class="row">
-    <div class="chip" style="background:#131318;color:#E4E1E9;border:1px solid #333"><b>surface (sheet)</b>#131318</div>
-    <div class="chip" style="background:#1F1F25;color:#E4E1E9;border:1px solid #333"><b>surface container</b>#1F1F25</div>
-    <div class="chip" style="background:#29282F;color:#E4E1E9"><b>container high</b>#29282F</div>
-  </div>
-  <div class="row">
-    <div class="chip" style="background:#0B84FE;color:#fff"><b>iMessage (unchanged)</b>#0B84FE</div>
-    <div class="chip" style="background:#34C759;color:#fff"><b>SMS (unchanged)</b>#34C759</div>
-    <div class="chip" style="background:#93000A;color:#FFDAD6"><b>error container</b>#93000A</div>
-  </div>
-  <p style="font-size:11px;opacity:.7;margin-top:10px">Note: on a real device, dynamic color (wallpaper) replaces the neutral + primary roles. The iMessage/SMS bubble colors never change — they are semantics, not theme.</p>
+  <div class="lede">Same rule. Semantic bubble fills are identical across themes.</div>
+    <div class="swatch"><div class="chip" style="background:#B9C3FF;color:#00184A"><b>primary</b><span>#B9C3FF · text #00184A</span></div><div class="ratio"><span class="ok">10.01:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#1E3163;color:#DCE1FF"><b>primary container</b><span>#1E3163 · text #DCE1FF</span></div><div class="ratio"><span class="ok">9.71:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#434659;color:#DFE1F9"><b>secondary container (chip on)</b><span>#434659 · text #DFE1F9</span></div><div class="ratio"><span class="ok">7.20:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#141218;color:#E6E0E9"><b>surface (sheet)</b><span>#141218 · text #E6E0E9</span></div><div class="ratio"><span class="ok">14.35:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#211F26;color:#E6E0E9"><b>surface container</b><span>#211F26 · text #E6E0E9</span></div><div class="ratio"><span class="ok">12.57:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#2B292F;color:#E6E0E9"><b>container high (incoming)</b><span>#2B292F · text #E6E0E9</span></div><div class="ratio"><span class="ok">11.09:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#36343B;color:#CAC4D0"><b>container highest</b><span>#36343B · text #CAC4D0</span></div><div class="ratio"><span class="ok">7.20:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#0A6ADF;color:#FFFFFF"><b>iMessage bubble (semantic)</b><span>#0A6ADF · text #FFFFFF</span></div><div class="ratio"><span class="ok">5.07:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#34C759;color:#0A2E12"><b>SMS bubble (semantic)</b><span>#34C759 · text #0A2E12</span></div><div class="ratio"><span class="ok">6.70:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#8C1D18;color:#F9DEDC"><b>error container</b><span>#8C1D18 · text #F9DEDC</span></div><div class="ratio"><span class="ok">7.17:1 ✓ (needs 4.5)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#141218;color:#938F99"><b>outline on surface (borders)</b><span>#141218 · text #938F99</span></div><div class="ratio"><span class="ok">5.87:1 ✓ (needs 3.0)</span></div></div>
+    <div class="swatch"><div class="chip" style="background:#141218;color:#49454F"><b>outline-variant (dividers)</b><span>#141218 · text #49454F</span></div><div class="ratio"><span class="na">decorative — no minimum</span></div></div>
 </div>
+<p class="foot"><b>Rules.</b> Text pairs must clear <b>4.5:1</b> (WCAG AA, 16sp body). Interactive
+borders and state indicators must clear <b>3:1</b> (WCAG 1.4.11) — that is why <code>--outline</code>
+exists separately from <code>--outline-variant</code>, which is decorative only and has no minimum.
+The iMessage/SMS fills are semantics, not theme, and never change with dynamic colour — but they are
+still contrast-constrained: the SMS green keeps its recognisable hue and darkens its <i>text</i>
+instead, because white on <code>#34C759</code> is only 2.22:1. On a real device, dynamic colour
+(wallpaper) replaces the neutral and primary roles, so the outline and surface ratios above hold for
+the static palette only.</p>
 </body></html>

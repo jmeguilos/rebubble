@@ -10,8 +10,14 @@
   --secondary-container: #DFE1F9; --on-secondary-container: #171B2C;
   --surface: #FEF7FF; --surface-container-low: #F7F2FA; --surface-container: #F3EDF7;
   --surface-container-high: #ECE6F0; --surface-container-highest: #E6E0E9;
-  --on-surface: #1D1B20; --on-surface-variant: #49454F; --outline-variant: #CAC4D0;
-  --imessage: #0A7CFF; --sms: #34C759; --on-bubble: #FFFFFF;
+  --on-surface: #1D1B20; --on-surface-variant: #49454F;
+  /* outline (interactive borders, 3:1 min) is a DIFFERENT token from outline-variant
+     (decorative dividers). Aliasing them is what produced 1.62:1 chip borders. */
+  --outline: #79747E; --outline-variant: #CAC4D0;
+  /* Semantics — never themed, but contrast-constrained (see _tokens.css). */
+  --imessage: #0A6ADF; --on-imessage: #FFFFFF;   /* 5.07:1 — was #0A7CFF, only 3.93:1 */
+  --sms: #34C759;      --on-sms: #0A2E12;        /* 6.70:1 — green kept, text darkened */
+  --on-bubble: #FFFFFF;                          /* legacy alias of --on-imessage */
   --incoming: #ECE6F0; --on-incoming: #1D1B20;
   --radius-sheet: 28px; --radius-bubble: 20px; --radius-tight: 5px;
   --font-display: "Figtree", system-ui, sans-serif; --font-body: "Roboto", system-ui, sans-serif;
@@ -21,7 +27,8 @@
   --primary:#B9C3FF; --on-primary:#00184A; --primary-container:#1E3163; --on-primary-container:#DCE1FF;
   --surface:#141218; --surface-container-low:#1D1B20; --surface-container:#211F26;
   --surface-container-high:#2B292F; --surface-container-highest:#36343B;
-  --on-surface:#E6E0E9; --on-surface-variant:#CAC4D0; --outline-variant:#49454F;
+  --on-surface:#E6E0E9; --on-surface-variant:#CAC4D0;
+  --outline:#938F99; --outline-variant:#49454F;   /* 5.87:1 vs dark surface */
   --incoming:#2B292F; --on-incoming:#E6E0E9; --av1-bg:#5D1133; --av1-fg:#FFD9E2;
 }
 * { margin:0; box-sizing:border-box; }
@@ -36,30 +43,43 @@ body { font-family:var(--font-body); color:var(--on-surface); -webkit-font-smoot
            box-shadow:0 6px 32px rgba(0,0,0,.14); display:flex; flex-direction:column; color:var(--on-surface); }
   .status { height:38px; display:flex; justify-content:space-between; align-items:center; padding:0 24px; font-size:14px; font-weight:500; }
   .sysicons { display:flex; gap:5px; align-items:center; }
+  /* Implemented as an M3 CenterAlignedTopAppBar with an expandedHeight and a
+     TopAppBarScrollBehavior — NOT a bare flex row. The bar owns its own status-bar inset;
+     back goes in navigationIcon, the avatar/name/service stack in the title slot. */
   .appbar { display:flex; align-items:center; justify-content:space-between; padding:2px 10px 12px; }
   .center { display:flex; flex-direction:column; align-items:center; gap:3px; }
   .avatar { width:40px; height:40px; border-radius:50%; background:var(--av1-bg); color:var(--av1-fg);
             display:flex; align-items:center; justify-content:center; font-weight:600; font-family:var(--font-display); font-size:17px; }
   .name { font-size:14px; font-weight:600; }
   .service { font-size:11px; color:var(--on-surface-variant); }
+  /* 44px is the PAINTED size. The touch target must be 48dp
+     (Modifier.minimumInteractiveComponentSize) — painted size and touch size are
+     different properties, and M3's 48dp minimum governs the latter. */
   .iconbtn { width:44px; height:44px; display:flex; align-items:center; justify-content:center; color:var(--on-surface); }
   .sheet { flex:1; background:var(--surface); border-radius:var(--radius-sheet) var(--radius-sheet) 0 0;
            display:flex; flex-direction:column; justify-content:flex-end; padding:16px 14px 16px; gap:2px; }
+  /* Fully-rounded pill (CircleShape), not a 12px rounded rect — 12px on a 26px-tall pill was
+     effectively a pill anyway, and 999px survives font scaling. */
   .day { align-self:center; font-size:12px; font-weight:500; color:var(--on-surface-variant); background:var(--surface-container-high);
-         border-radius:12px; padding:5px 12px; margin-bottom:12px; }
+         border-radius:999px; padding:5px 12px; margin-bottom:12px; }
   .bubble { max-width:76%; padding:11px 15px; font-size:16px; line-height:1.4; width:fit-content; position:relative; }
   .in { background:var(--incoming); color:var(--on-incoming); align-self:flex-start; border-radius:20px 20px 20px 5px; }
   .in.mid { border-radius:5px 20px 20px 5px; }
   .in.last { border-radius:5px 20px 20px 20px; }
-  .in.last::after { content:""; position:absolute; bottom:0; left:-6px; width:12px; height:12px;
-                    background:radial-gradient(circle at 0 0, transparent 12px, var(--incoming) 12px); transform:scaleX(-1); }
-  .out { background:var(--imessage); color:var(--on-bubble); align-self:flex-end; border-radius:20px 20px 5px 20px; }
+  .out { background:var(--imessage); color:var(--on-imessage); align-self:flex-end; border-radius:20px 20px 5px 20px; }
   .out.last { border-radius:20px 5px 20px 20px; }
-  .out.last::after { content:""; position:absolute; bottom:0; right:-6px; width:12px; height:12px;
-                     background:radial-gradient(circle at 0 0, transparent 12px, var(--imessage) 12px); }
+  .out.sms { background:var(--sms); color:var(--on-sms); }
+  /* NO TAIL. Run membership and direction are carried entirely by the asymmetric radii above:
+     the NEAR side (left for incoming, right for outgoing) uses 5px mid-run and 20px on the run's
+     final bubble; the FAR side is always 20px. Neither M3 nor Google Messages ships a bubble tail,
+     and the fillet this card used to specify was geometrically impossible — a 12px concave notch
+     offset 6px outside a 20px corner leaves a 14px gap, so it rendered as a detached nub. */
   .micro { align-self:flex-end; font-size:11px; font-weight:500; color:var(--on-surface-variant); margin:4px 8px 0 0; }
   .gap { height:12px; }
   .composerwrap { padding:10px 14px 20px; display:flex; align-items:flex-end; gap:10px; background:var(--surface-container); }
+  /* Composer controls: 44px painted, 48dp touch target (see .iconbtn note).
+     The send icon takes --on-primary, never a hard-coded white: white on the dark-theme
+     primary (#B9C3FF) is 1.71:1. */
   .plus { width:44px; height:44px; border-radius:50%; background:var(--surface-container-high); color:var(--on-surface-variant);
           display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .field { flex:1; min-height:44px; border-radius:24px; background:var(--surface-container-high); padding:12px 18px;
