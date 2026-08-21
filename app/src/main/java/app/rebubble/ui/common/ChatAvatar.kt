@@ -22,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.rebubble.ui.theme.FigtreeFamily
 import app.rebubble.ui.theme.avatarHueFor
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
@@ -110,7 +111,9 @@ fun MonogramCircle(
         Text(
             text = initials,
             style = textStyle.copy(
-                fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
+                // Named explicitly: titleMedium is the body face now (see Type.kt's role rule), so
+                // borrowing its family here would silently drop the display face from monograms.
+                fontFamily = FigtreeFamily,
                 fontWeight = FontWeight.SemiBold,
             ),
             color = hue.foreground,

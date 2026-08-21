@@ -1,3 +1,17 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.Rebubble" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+      Light half of a DayNight pair. The dark half lives in res/values-night/themes.xml.
+
+      This used to be a single light-only style (`android:Theme.Material.Light.NoActionBar` with no
+      night variant), which meant the pre-composition window was always painted light: launching in
+      dark mode produced a white flash before the first frame. Declaring the same style name under
+      the `night` qualifier fixes that, and — because enableEdgeToEdge()'s default
+      SystemBarStyle.auto resolves light/dark from the resource night qualifier — it also makes the
+      system-bar icon contrast correct in dark mode for free.
+
+      `windowBackground` is the tonal band both main screens paint first (see values/colors.xml).
+    -->
+    <style name="Theme.Rebubble" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>

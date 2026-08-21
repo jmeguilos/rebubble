@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Pre-Compose window background, used for the frame(s) between window creation and the first
+      composition. This must match what the app actually paints first, which is the Scaffold's
+      containerColor on both main screens: surfaceContainer (the tonal band behind the rounded
+      sheet), NOT surface. Value mirrors the surface-container token in design/_tokens.css.
+    -->
+    <color name="window_background">#F3EDF7</color>
+</resources>

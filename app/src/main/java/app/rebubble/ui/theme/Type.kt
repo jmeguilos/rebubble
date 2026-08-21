@@ -41,61 +41,72 @@ val FigtreeFamily = FontFamily(
     figtree(700),
 )
 
+/**
+ * M3 baseline type scale, with one deliberate role rule from `design/foundations/type.html`:
+ *
+ * **The display face (Figtree) is used only for display/headline roles, [Typography.titleLarge],
+ * and avatar monograms. Everything 16sp and below — including `titleMedium` and `titleSmall` —
+ * uses the platform body face**, so conversational text reads like the OS rather than the brand.
+ *
+ * Consequence worth knowing: anything that previously derived its family from
+ * `typography.titleMedium.fontFamily` now gets Roboto. `ChatAvatar` therefore names
+ * [FigtreeFamily] explicitly instead of borrowing it from a title role.
+ */
 val Typography = Typography(
     displayLarge = TextStyle(
         fontFamily = FigtreeFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 40.sp,
-        lineHeight = 48.sp,
-        letterSpacing = (-0.5).sp,
+        fontSize = 57.sp,
+        lineHeight = 64.sp,
+        letterSpacing = (-0.25).sp,
     ),
     displayMedium = TextStyle(
         fontFamily = FigtreeFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
-        letterSpacing = (-0.25).sp,
+        fontSize = 45.sp,
+        lineHeight = 52.sp,
+        letterSpacing = 0.sp,
     ),
     displaySmall = TextStyle(
         fontFamily = FigtreeFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
+        fontSize = 36.sp,
+        lineHeight = 44.sp,
         letterSpacing = 0.sp,
     ),
     headlineLarge = TextStyle(
         fontFamily = FigtreeFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
     ),
     headlineMedium = TextStyle(
         fontFamily = FigtreeFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        lineHeight = 32.sp,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
     ),
     headlineSmall = TextStyle(
         fontFamily = FigtreeFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 28.sp,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
     ),
     titleLarge = TextStyle(
         fontFamily = FigtreeFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
+        fontSize = 22.sp,
         lineHeight = 28.sp,
     ),
     titleMedium = TextStyle(
-        fontFamily = FigtreeFamily,
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.1.sp,
     ),
     titleSmall = TextStyle(
-        fontFamily = FigtreeFamily,
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
         lineHeight = 20.sp,

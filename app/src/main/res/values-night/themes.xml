@@ -1,0 +1,9 @@
+<resources>
+    <!--
+      Dark half of the DayNight pair — same style name, dark platform parent. See
+      res/values/themes.xml for why this exists.
+    -->
+    <style name="Theme.Rebubble" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

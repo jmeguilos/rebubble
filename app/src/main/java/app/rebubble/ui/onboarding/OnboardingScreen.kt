@@ -280,7 +280,7 @@ private fun WelcomePane(
             VerticalSpace(ScreenRhythm)
             Text(
                 text = OnboardingCopy.BRAND,
-                style = MaterialTheme.typography.displaySmall,
+                style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
             )
@@ -544,7 +544,9 @@ private fun BrandMark() {
     ) {
         Text(
             text = "R",
-            style = MaterialTheme.typography.displaySmall,
+            // headlineMedium (28sp) preserves the brandmark glyph's painted size now that
+            // displaySmall has moved to its M3 baseline of 36sp.
+            style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onPrimary,
         )
     }
