@@ -167,4 +167,25 @@ class ContactRepositoryTest {
 
         assertTrue(db.contactDao().getAll().isEmpty())
     }
+
+    @Test
+    fun `two contacts sharing an address resolve last-write-wins by response order`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                envelope(
+                    """[
+                        {"displayName":"Home Line","phoneNumbers":[{"address":"+15550100009","id":1}],"emails":[]},
+                        {"displayName":"Dana Reyes","phoneNumbers":[{"address":"+15550100009","id":2}],"emails":[]}
+                    ]"""
+                )
+            )
+        )
+
+        repository().syncContacts()
+
+        // Documented tradeoff: Room REPLACE on the address PK makes the LAST entry in the
+        // server's response order win. This test pins that behavior so a future change that
+        // flips the winner is a conscious decision, not an accident.
+        assertEquals("Dana Reyes", db.contactDao().getAll().single { it.address == "+15550100009" }.displayName)
+    }
 }

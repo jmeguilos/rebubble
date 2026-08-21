@@ -17,6 +17,10 @@ import app.rebubble.data.local.entity.ContactEntity
  * inference) — it only needs to make the *common* punctuation variants of the same number collide,
  * not fully canonicalize arbitrary international input.
  */
+/*
+ * Caveat: phone normalization keeps ALL digits, so suffixes like ";ext=123" fold their digits into
+ * the number. Full RFC/libphonenumber parsing is deliberately out of scope.
+ */
 fun normalizeAddress(raw: String): String {
     if (raw.contains('@')) return raw.lowercase()
 
